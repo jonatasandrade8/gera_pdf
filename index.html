@@ -694,10 +694,9 @@
             const totalBruto = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
             
             // ###################
-            // ## AQUI É A CORREÇÃO ##
+            // ## CORREÇÃO PRINCIPAL: Revertendo para o uso padrão do plugin ##
             // ###################
-            // Em vez de 'doc.autoTable(...)', usamos 'window.jspdf.autoTable(doc, ...)'
-            window.jspdf.autoTable(doc, {
+            doc.autoTable({ 
                 startY: y,
                 head: [tableHead],
                 body: tableBody,
@@ -726,14 +725,18 @@
                     doc.setFillColor(245, 245, 245);
                     doc.rect(data.settings.margin.left, tableBottom, data.table.width, 10, 'F');
                     
-                    doc.text("TOTAL GERAL", data.settings.margin.left + (data.table.columns[0].width + data.table.columns[1].width), tableBottom + 7, { halign: 'right' });
-                    doc.text(formatarMoeda(totalBruto), data.table.width + data.settings.margin.left - data.table.columns[3].width, tableBottom + 7, { halign: 'right', width: data.table.columns[3].width });
+                    // Calculo de posição para o Total
+                    const col2Width = data.table.columns[2].width;
+                    const col3Width = data.table.columns[3].width;
+                    const tableXEnd = data.table.width + data.settings.margin.left;
+
+                    doc.text("TOTAL GERAL", tableXEnd - col2Width - col3Width - 5, tableBottom + 7, { halign: 'left' });
+                    doc.text(formatarMoeda(totalBruto), tableXEnd - 5, tableBottom + 7, { halign: 'right', width: col3Width });
                 }
             });
 
-            // Atualizamos 'y' *depois* que a tabela é desenhada,
-            // pegando a posição final que o plugin armazena.
-            y = doc.autoTable.previous.finalY + 15; // +15 de margem
+            // Atualizamos 'y' usando a posição final reportada pela biblioteca.
+            y = doc.autoTable.previous.finalY + 15; 
 
             
             // 8. Seção Assinaturas
@@ -747,8 +750,9 @@
             const signatureY = docHeight - 50; 
             const sigWidth = 80; // Largura da linha de assinatura
             const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
-            const sigRightX = margin + (docWidth * 3 / 4) - (docWidth / 4) - (sigWidth / 2);
-
+            const sigRightX = docWidth - margin - (docWidth / 4) - (sigWidth / 2); // Centralizando as assinaturas
+            
+            // Linha do Recebedor
             doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
@@ -756,6 +760,7 @@
             doc.setFontSize(9);
             doc.text("Assinatura do Recebedor", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" });
 
+            // Linha do Pagador
             doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
