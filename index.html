@@ -9,7 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.umd.js"></script>
 
     <style>
-        /* Seu CSS existente permanece exatamente o mesmo... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -259,7 +258,6 @@
         let recibosSalvos = [];
 
         // --- Funções de Gerenciamento de Tipo (PF/PJ) ---
-        // (Sem alterações)
         function setRecebedorType(type) {
             recebedorType = type;
             document.getElementById('btn-recebedor-pf').classList.toggle('active', type === 'pf');
@@ -307,7 +305,6 @@
         }
 
         // --- Funções de Busca (API) ---
-        // (Sem alterações)
         function buscarCEP(tipo) {
             const cepInput = document.getElementById(tipo + '-cep');
             const cep = cepInput.value.replace(/\D/g, '');
@@ -320,7 +317,7 @@
                         document.getElementById(tipo + '-rua').value = data.logradouro;
                         document.getElementById(tipo + '-cidade').value = data.localidade;
                         document.getElementById(tipo + '-uf').value = data.uf;
-                        document.getElementById(tipo + '-num').focus(); // Foca no número
+                        document.getElementById(tipo + '-num').focus();
                         atualizarPrevia();
                     } else {
                         alert('CEP não encontrado!');
@@ -335,7 +332,7 @@
 
         function buscarCNPJ(tipo) {
             const currentType = (tipo === 'recebedor') ? recebedorType : pagadorType;
-            if (currentType !== 'pj') return; // Só busca se for PJ
+            if (currentType !== 'pj') return;
 
             const cnpjInput = document.getElementById(tipo + '-doc');
             const cnpj = cnpjInput.value.replace(/\D/g, '');
@@ -364,9 +361,7 @@
                 });
         }
 
-
         // --- Funções de Gerenciamento de Serviços (Item do Recibo) ---
-        // (Sem alterações)
         function adicionarServico() {
             const id = Date.now();
             servicos.push({ id, descricao: '', quantidade: 1, preco: 0 });
@@ -427,7 +422,6 @@
         }
 
         // --- Funções de Cálculo e Formatação ---
-        // (Sem alterações)
         function calcularTotal() {
             const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
             document.getElementById('total-amount').textContent = formatarMoeda(total);
@@ -439,7 +433,6 @@
         }
 
         // --- Funções de Atualização da UI (Preview) ---
-        // (Sem alterações)
         function atualizarPrevia() {
             const total = calcularTotal();
 
@@ -541,7 +534,6 @@
         }
 
         // --- Funções de Validação ---
-        // (Sem alterações)
         function validarFormulario() {
             const camposRecebedor = [
                 'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
@@ -589,236 +581,264 @@
 
             return true;
         }
-// --- FUNÇÃO DE GERAR PDF CORRIGIDA ---
-function gerarPDF() {
-    if (!validarFormulario()) return;
 
-    try {
-        // 1. Inicializar o jsPDF CORRETAMENTE
-        const doc = new jspdf.jsPDF();
-        
-        // 2. Definir variáveis e constantes
-        const margin = 15;
-        const docWidth = doc.internal.pageSize.getWidth();
-        const docHeight = doc.internal.pageSize.getHeight();
-        let y = margin; // Posição vertical atual
+        // --- FUNÇÃO DE GERAR PDF CORRIGIDA E MELHORADA ---
+        function gerarPDF() {
+            if (!validarFormulario()) return;
 
-        const recebedorNome = document.getElementById('recebedor-nome').value;
-        const pagadorNome = document.getElementById('pagador-nome').value || 'PAGADOR';
-
-        const recebedorEnd = [
-            document.getElementById('recebedor-rua').value,
-            document.getElementById('recebedor-num').value
-        ].filter(Boolean).join(', ') + (document.getElementById('recebedor-comp').value ? ` - ${document.getElementById('recebedor-comp').value}` : '');
-        
-        const recebedorCidade = [
-            document.getElementById('recebedor-cidade').value,
-            document.getElementById('recebedor-uf').value
-        ].filter(Boolean).join('/');
-        
-        const pagadorEnd = [
-            document.getElementById('pagador-rua').value,
-            document.getElementById('pagador-num').value
-        ].filter(Boolean).join(', ') + (document.getElementById('pagador-comp').value ? ` - ${document.getElementById('pagador-comp').value}` : '');
-        
-        const pagadorCidade = [
-            document.getElementById('pagador-cidade').value,
-            document.getElementById('pagador-uf').value
-        ].filter(Boolean).join('/');
-
-        // 3. Título
-        doc.setFontSize(22);
-        doc.setFont("helvetica", "bold");
-        doc.text("RECIBO", docWidth / 2, y + 10, { align: "center" });
-        y += 25;
-
-        // 4. Seção Recebedor
-        drawSectionHeader(doc, "RECEBEDOR (PRESTADOR)", y);
-        y += 10;
-        y = drawInfoBlock(doc, y, [
-            [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, recebedorNome],
-            [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('recebedor-doc').value],
-            ["Telefone:", document.getElementById('recebedor-tel').value],
-            ["Endereço:", recebedorEnd],
-            ["Cidade/UF:", recebedorCidade],
-            ["CEP:", document.getElementById('recebedor-cep').value]
-        ]);
-        y += 5;
-
-        // 5. Seção Pagador
-        drawSectionHeader(doc, "PAGADOR (CLIENTE)", y);
-        y += 10;
-        y = drawInfoBlock(doc, y, [
-            [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, pagadorNome],
-            [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('pagador-doc').value],
-            ["Telefone:", document.getElementById('pagador-tel').value],
-            ["Endereço:", pagadorEnd],
-            ["Cidade/UF:", pagadorCidade],
-            ["CEP:", document.getElementById('pagador-cep').value]
-        ]);
-        y += 5;
-
-        // 6. Seção Período
-        const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-        const dataInicioInput = document.getElementById('periodo-inicio').value;
-        const dataFimInput = document.getElementById('periodo-fim').value;
-        const periodoInicio = new Date(dataInicioInput + 'T03:00:00').toLocaleDateString('pt-BR');
-        const periodoFim = new Date(dataFimInput + 'T03:00:00').toLocaleDateString('pt-BR');
-        let textoPeriodicidade = `${periodoTipo} de ${periodoInicio} a ${periodoFim}`;
-
-        drawSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y);
-        y += 10;
-        y = drawInfoBlock(doc, y, [ ["Referente a:", textoPeriodicidade] ]);
-        y += 5;
-
-        // 7. Seção Serviços (Tabela) - VERSÃO SIMPLIFICADA
-        if (servicos.length > 0) {
-            drawSectionHeader(doc, "DESCRIÇÃO DOS SERVIÇOS/PRODUTOS", y);
-            y += 10;
-
-            // Cabeçalho da tabela manual
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setFillColor(245, 245, 245);
-            doc.rect(margin, y, docWidth - (margin * 2), 8, 'F');
-            
-            doc.text("Descrição", margin + 2, y + 6);
-            doc.text("Qtd", docWidth - 150, y + 6, { align: "center" });
-            doc.text("Preço Unit.", docWidth - 100, y + 6, { align: "right" });
-            doc.text("Total", docWidth - margin - 2, y + 6, { align: "right" });
-            
-            y += 12;
-
-            // Itens da tabela
-            doc.setFont("helvetica", "normal");
-            let totalGeral = 0;
-
-            servicos.forEach(servico => {
-                const totalItem = servico.quantidade * servico.preco;
-                totalGeral += totalItem;
-
-                // Quebra de linha se o texto for muito longo
-                const descricaoLines = doc.splitTextToSize(servico.descricao || 'N/D', 80);
+            try {
+                // Inicializar o jsPDF
+                const doc = new jspdf.jsPDF();
                 
-                // Verifica se precisa de nova página
-                if (y + (descricaoLines.length * 5) + 10 > docHeight - 50) {
+                // Definir variáveis e constantes
+                const margin = 20;
+                const docWidth = doc.internal.pageSize.getWidth();
+                const docHeight = doc.internal.pageSize.getHeight();
+                let y = margin;
+
+                // Cores para o documento
+                const primaryColor = [102, 126, 234]; // Azul
+                const secondaryColor = [118, 75, 162]; // Roxo
+                const lightGray = [245, 245, 245];
+                const darkGray = [51, 51, 51];
+
+                // Dados do formulário
+                const recebedorNome = document.getElementById('recebedor-nome').value;
+                const pagadorNome = document.getElementById('pagador-nome').value || 'PAGADOR';
+
+                const recebedorEnd = [
+                    document.getElementById('recebedor-rua').value,
+                    document.getElementById('recebedor-num').value
+                ].filter(Boolean).join(', ') + (document.getElementById('recebedor-comp').value ? ` - ${document.getElementById('recebedor-comp').value}` : '');
+                
+                const recebedorCidade = [
+                    document.getElementById('recebedor-cidade').value,
+                    document.getElementById('recebedor-uf').value
+                ].filter(Boolean).join('/');
+                
+                const pagadorEnd = [
+                    document.getElementById('pagador-rua').value,
+                    document.getElementById('pagador-num').value
+                ].filter(Boolean).join(', ') + (document.getElementById('pagador-comp').value ? ` - ${document.getElementById('pagador-comp').value}` : '');
+                
+                const pagadorCidade = [
+                    document.getElementById('pagador-cidade').value,
+                    document.getElementById('pagador-uf').value
+                ].filter(Boolean).join('/');
+
+                // Cabeçalho com gradiente
+                doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.rect(0, 0, docWidth, 40, 'F');
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(24);
+                doc.setFont("helvetica", "bold");
+                doc.text("RECIBO", docWidth / 2, 25, { align: "center" });
+                
+                // Linha decorativa
+                doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+                doc.rect(0, 40, docWidth, 4, 'F');
+                
+                y = 60;
+
+                // Seção Recebedor
+                drawSectionHeader(doc, "RECEBEDOR", y, primaryColor);
+                y += 12;
+                y = drawInfoBlock(doc, y, [
+                    [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, recebedorNome],
+                    [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('recebedor-doc').value],
+                    ["Telefone:", document.getElementById('recebedor-tel').value],
+                    ["Endereço:", recebedorEnd],
+                    ["Cidade/UF:", recebedorCidade],
+                    ["CEP:", document.getElementById('recebedor-cep').value]
+                ]);
+                y += 10;
+
+                // Seção Pagador
+                drawSectionHeader(doc, "PAGADOR", y, primaryColor);
+                y += 12;
+                y = drawInfoBlock(doc, y, [
+                    [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, pagadorNome],
+                    [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('pagador-doc').value],
+                    ["Telefone:", document.getElementById('pagador-tel').value],
+                    ["Endereço:", pagadorEnd],
+                    ["Cidade/UF:", pagadorCidade],
+                    ["CEP:", document.getElementById('pagador-cep').value]
+                ]);
+                y += 10;
+
+                // Seção Período
+                const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
+                const dataInicioInput = document.getElementById('periodo-inicio').value;
+                const dataFimInput = document.getElementById('periodo-fim').value;
+                const periodoInicio = new Date(dataInicioInput + 'T03:00:00').toLocaleDateString('pt-BR');
+                const periodoFim = new Date(dataFimInput + 'T03:00:00').toLocaleDateString('pt-BR');
+                let textoPeriodicidade = `${periodoTipo} de ${periodoInicio} a ${periodoFim}`;
+
+                drawSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y, primaryColor);
+                y += 12;
+                y = drawInfoBlock(doc, y, [ ["Referente a:", textoPeriodicidade] ]);
+                y += 15;
+
+                // Seção Serviços
+                if (servicos.length > 0) {
+                    drawSectionHeader(doc, "DESCRIÇÃO DOS SERVIÇOS/PRODUTOS", y, primaryColor);
+                    y += 12;
+
+                    // Cabeçalho da tabela
+                    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                    doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
+                    
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+                    
+                    doc.text("Descrição", margin + 2, y + 7);
+                    doc.text("Qtd", docWidth - 120, y + 7, { align: "center" });
+                    doc.text("Preço Unit.", docWidth - 70, y + 7, { align: "right" });
+                    doc.text("Total", docWidth - margin - 2, y + 7, { align: "right" });
+                    
+                    y += 15;
+
+                    // Itens da tabela
+                    doc.setFont("helvetica", "normal");
+                    let totalGeral = 0;
+
+                    servicos.forEach(servico => {
+                        const totalItem = servico.quantidade * servico.preco;
+                        totalGeral += totalItem;
+
+                        // Quebra de linha se o texto for muito longo
+                        const descricaoLines = doc.splitTextToSize(servico.descricao || 'N/D', 80);
+                        
+                        // Verifica se precisa de nova página
+                        if (y + (descricaoLines.length * 5) + 10 > docHeight - 50) {
+                            doc.addPage();
+                            y = margin;
+                        }
+
+                        // Descrição (com quebra de linha)
+                        doc.text(descricaoLines, margin + 2, y + 4);
+                        
+                        // Demais colunas
+                        doc.text(servico.quantidade.toString(), docWidth - 120, y + 4, { align: "center" });
+                        doc.text(formatarMoeda(servico.preco), docWidth - 70, y + 4, { align: "right" });
+                        doc.text(formatarMoeda(totalItem), docWidth - margin - 2, y + 4, { align: "right" });
+
+                        y += Math.max(10, descricaoLines.length * 5);
+                        
+                        // Linha divisória entre itens
+                        if (y < docHeight - 50) {
+                            doc.setDrawColor(220, 220, 220);
+                            doc.line(margin, y, docWidth - margin, y);
+                            y += 5;
+                        }
+                    });
+
+                    // Linha do total
+                    y += 5;
+                    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                    doc.line(margin, y, docWidth - margin, y);
+                    y += 8;
+
+                    doc.setFont("helvetica", "bold");
+                    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                    doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
+                    
+                    doc.text("TOTAL GERAL", margin + 2, y + 7);
+                    doc.text(formatarMoeda(totalGeral), docWidth - margin - 2, y + 7, { align: "right" });
+
+                    y += 20;
+                }
+
+                // Seção Assinaturas
+                // Verifica se precisa de nova página para as assinaturas
+                if (y > docHeight - 60) {
                     doc.addPage();
                     y = margin;
                 }
 
-                // Descrição (com quebra de linha)
-                doc.text(descricaoLines, margin + 2, y + 4);
+                const signatureY = docHeight - 50;
+                const sigWidth = 80;
+                const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
+                const sigRightX = docWidth - margin - (docWidth / 4) - (sigWidth / 2);
                 
-                // Demais colunas
-                doc.text(servico.quantidade.toString(), docWidth - 150, y + 4, { align: "center" });
-                doc.text(formatarMoeda(servico.preco), docWidth - 100, y + 4, { align: "right" });
-                doc.text(formatarMoeda(totalItem), docWidth - margin - 2, y + 4, { align: "right" });
+                // Linha do Recebedor
+                doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+                doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
+                doc.setFontSize(9);
+                doc.setTextColor(100);
+                doc.text("Assinatura do Recebedor", sigLeftX + sigWidth / 2, signatureY + 15, { align: "center" });
 
-                y += Math.max(10, descricaoLines.length * 5);
-            });
+                // Linha do Pagador
+                doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+                doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
+                doc.setFontSize(9);
+                doc.setTextColor(100);
+                doc.text("Assinatura do Pagador", sigRightX + sigWidth / 2, signatureY + 15, { align: "center" });
 
-            // Linha do total
-            y += 5;
-            doc.setDrawColor(200, 200, 200);
-            doc.line(margin, y, docWidth - margin, y);
-            y += 8;
+                // Data de Emissão (Rodapé)
+                const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(100);
+                doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - margin + 5, { align: "center" });
 
-            doc.setFont("helvetica", "bold");
-            doc.setFillColor(245, 245, 245);
-            doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
+                // Salvar o PDF
+                const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+                doc.save(fileName);
+
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+            }
+        }
+
+        // Funções auxiliares para o PDF
+        function drawSectionHeader(doc, text, y, color) {
+            const margin = 20;
+            const docWidth = doc.internal.pageSize.getWidth();
             
-            doc.text("TOTAL GERAL", margin + 2, y + 7);
-            doc.text(formatarMoeda(totalGeral), docWidth - margin - 2, y + 7, { align: "right" });
-
-            y += 15;
-        }
-
-        // 8. Seção Assinaturas
-        // Verifica se precisa de nova página para as assinaturas
-        if (y > docHeight - 60) {
-            doc.addPage();
-            y = margin;
-        }
-
-        const signatureY = docHeight - 50;
-        const sigWidth = 80;
-        const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
-        const sigRightX = docWidth - margin - (docWidth / 4) - (sigWidth / 2);
-        
-        // Linha do Recebedor
-        doc.setDrawColor(0, 0, 0);
-        doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
-        doc.setFontSize(9);
-        doc.text("Assinatura do Recebedor", sigLeftX + sigWidth / 2, signatureY + 15, { align: "center" });
-
-        // Linha do Pagador
-        doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
-        doc.setFontSize(9);
-        doc.text("Assinatura do Pagador", sigRightX + sigWidth / 2, signatureY + 15, { align: "center" });
-
-        // 9. Data de Emissão (Rodapé)
-        const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100);
-        doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - margin + 5, { align: "center" });
-
-        // 10. Salvar o PDF - CORREÇÃO PRINCIPAL
-        const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
-        doc.save(fileName);
-
-    } catch (error) {
-        console.error('Erro ao gerar PDF:', error);
-        alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
-    }
-}
-
-// Funções auxiliares mantidas iguais
-function drawSectionHeader(doc, text, y) {
-    const margin = 15;
-    const docWidth = doc.internal.pageSize.getWidth();
-    
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setFillColor(245, 245, 245);
-    doc.setTextColor(51, 51, 51);
-    doc.setDrawColor(224, 224, 224);
-    doc.rect(margin, y, docWidth - (margin * 2), 8, 'FD');
-    doc.text(text.toUpperCase(), margin + 4, y + 6);
-}
-
-function drawInfoBlock(doc, y, data) {
-    const labelWidth = 40;
-    const margin = 15;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(51, 51, 51);
-
-    data.forEach(([label, value]) => {
-        if (value && value.trim() !== "") {
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text(label, margin, y);
+            doc.setFillColor(color[0], color[1], color[2]);
+            doc.setTextColor(255, 255, 255);
+            doc.rect(margin, y, docWidth - (margin * 2), 8, 'F');
+            doc.text(text.toUpperCase(), margin + 5, y + 6);
+        }
+
+        function drawInfoBlock(doc, y, data) {
+            const labelWidth = 45;
+            const margin = 20;
+            doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            
-            // Quebra de texto se for muito longo
-            const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
-            doc.text(lines, margin + labelWidth, y);
-            
-            y += lines.length * 5 + 2;
-        }
-    });
-    return y;
-}
+            doc.setTextColor(51, 51, 51);
 
+            data.forEach(([label, value]) => {
+                if (value && value.trim() !== "") {
+                    doc.setFont("helvetica", "bold");
+                    doc.text(label, margin, y);
+                    doc.setFont("helvetica", "normal");
+                    
+                    // Quebra de texto se for muito longo
+                    const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
+                    doc.text(lines, margin + labelWidth, y);
+                    
+                    y += lines.length * 5 + 2;
+                }
+            });
+            return y;
+        }
 
         // --- FUNÇÕES CRUD (Salvar, Carregar, Remover) ---
-        // (Sem alterações)
         function getFormData() {
             const data = {
                 recebedorType,
