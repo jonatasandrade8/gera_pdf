@@ -582,7 +582,7 @@
             return true;
         }
 
-        // --- FUNÇÃO DE GERAR PDF CORRIGIDA E MELHORADA ---
+        // --- FUNÇÃO DE GERAR PDF OTIMIZADA PARA UMA PÁGINA A4 ---
         function gerarPDF() {
             if (!validarFormulario()) return;
 
@@ -591,7 +591,7 @@
                 const doc = new jspdf.jsPDF();
                 
                 // Definir variáveis e constantes
-                const margin = 20;
+                const margin = 15;
                 const docWidth = doc.internal.pageSize.getWidth();
                 const docHeight = doc.internal.pageSize.getHeight();
                 let y = margin;
@@ -626,48 +626,53 @@
                     document.getElementById('pagador-uf').value
                 ].filter(Boolean).join('/');
 
-                // Cabeçalho com gradiente
+                // Cabeçalho compacto
                 doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.rect(0, 0, docWidth, 40, 'F');
+                doc.rect(0, 0, docWidth, 25, 'F');
                 
                 doc.setTextColor(255, 255, 255);
-                doc.setFontSize(24);
+                doc.setFontSize(18);
                 doc.setFont("helvetica", "bold");
-                doc.text("RECIBO", docWidth / 2, 25, { align: "center" });
+                doc.text("RECIBO", docWidth / 2, 15, { align: "center" });
                 
                 // Linha decorativa
                 doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-                doc.rect(0, 40, docWidth, 4, 'F');
+                doc.rect(0, 25, docWidth, 3, 'F');
                 
-                y = 60;
+                y = 35;
 
-                // Seção Recebedor
-                drawSectionHeader(doc, "RECEBEDOR", y, primaryColor);
-                y += 12;
-                y = drawInfoBlock(doc, y, [
+                // Layout em duas colunas para Recebedor e Pagador
+                const colWidth = (docWidth - (margin * 3)) / 2;
+                
+                // Recebedor (coluna esquerda)
+                drawCompactSectionHeader(doc, "RECEBEDOR", y, primaryColor, margin);
+                y += 8;
+                y = drawCompactInfoBlock(doc, y, [
                     [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, recebedorNome],
                     [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('recebedor-doc').value],
                     ["Telefone:", document.getElementById('recebedor-tel').value],
                     ["Endereço:", recebedorEnd],
                     ["Cidade/UF:", recebedorCidade],
                     ["CEP:", document.getElementById('recebedor-cep').value]
-                ]);
-                y += 10;
-
-                // Seção Pagador
-                drawSectionHeader(doc, "PAGADOR", y, primaryColor);
-                y += 12;
-                y = drawInfoBlock(doc, y, [
+                ], margin, colWidth);
+                
+                // Pagador (coluna direita)
+                const pagadorY = 35;
+                drawCompactSectionHeader(doc, "PAGADOR", pagadorY, primaryColor, margin + colWidth + margin);
+                let pagadorContentY = pagadorY + 8;
+                pagadorContentY = drawCompactInfoBlock(doc, pagadorContentY, [
                     [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, pagadorNome],
                     [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('pagador-doc').value],
                     ["Telefone:", document.getElementById('pagador-tel').value],
                     ["Endereço:", pagadorEnd],
                     ["Cidade/UF:", pagadorCidade],
                     ["CEP:", document.getElementById('pagador-cep').value]
-                ]);
-                y += 10;
+                ], margin + colWidth + margin, colWidth);
+                
+                // Ajusta Y para a próxima seção baseado na coluna mais longa
+                y = Math.max(y, pagadorContentY) + 10;
 
-                // Seção Período
+                // Seção Período (centralizada)
                 const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
                 const dataInicioInput = document.getElementById('periodo-inicio').value;
                 const dataFimInput = document.getElementById('periodo-fim').value;
@@ -675,122 +680,124 @@
                 const periodoFim = new Date(dataFimInput + 'T03:00:00').toLocaleDateString('pt-BR');
                 let textoPeriodicidade = `${periodoTipo} de ${periodoInicio} a ${periodoFim}`;
 
-                drawSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y, primaryColor);
-                y += 12;
-                y = drawInfoBlock(doc, y, [ ["Referente a:", textoPeriodicidade] ]);
-                y += 15;
+                drawCompactSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y, primaryColor, margin);
+                y += 8;
+                y = drawCompactInfoBlock(doc, y, [ ["Referente a:", textoPeriodicidade] ], margin, docWidth - (margin * 2));
+                y += 10;
 
-                // Seção Serviços
+                // Seção Serviços - Usando autoTable para melhor controle
                 if (servicos.length > 0) {
-                    drawSectionHeader(doc, "DESCRIÇÃO DOS SERVIÇOS/PRODUTOS", y, primaryColor);
-                    y += 12;
+                    drawCompactSectionHeader(doc, "DESCRIÇÃO DOS SERVIÇOS/PRODUTOS", y, primaryColor, margin);
+                    y += 8;
 
-                    // Cabeçalho da tabela
-                    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-                    doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
-                    
-                    doc.setFontSize(10);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                    
-                    doc.text("Descrição", margin + 2, y + 7);
-                    doc.text("Qtd", docWidth - 120, y + 7, { align: "center" });
-                    doc.text("Preço Unit.", docWidth - 70, y + 7, { align: "right" });
-                    doc.text("Total", docWidth - margin - 2, y + 7, { align: "right" });
-                    
-                    y += 15;
+                    // Preparar dados para a tabela
+                    const tableColumns = [
+                        { header: 'Descrição', dataKey: 'descricao' },
+                        { header: 'Qtd', dataKey: 'quantidade' },
+                        { header: 'Preço Unit.', dataKey: 'preco' },
+                        { header: 'Total', dataKey: 'total' }
+                    ];
 
-                    // Itens da tabela
-                    doc.setFont("helvetica", "normal");
-                    let totalGeral = 0;
+                    const tableData = servicos.map(servico => ({
+                        descricao: servico.descricao || 'N/D',
+                        quantidade: servico.quantidade,
+                        preco: formatarMoeda(servico.preco),
+                        total: formatarMoeda(servico.quantidade * servico.preco)
+                    }));
 
-                    servicos.forEach(servico => {
-                        const totalItem = servico.quantidade * servico.preco;
-                        totalGeral += totalItem;
+                    // Calcular altura máxima disponível para a tabela
+                    const maxTableHeight = docHeight - y - 50; // Reserva espaço para assinaturas
 
-                        // Quebra de linha se o texto for muito longo
-                        const descricaoLines = doc.splitTextToSize(servico.descricao || 'N/D', 80);
-                        
-                        // Verifica se precisa de nova página
-                        if (y + (descricaoLines.length * 5) + 10 > docHeight - 50) {
-                            doc.addPage();
-                            y = margin;
-                        }
-
-                        // Descrição (com quebra de linha)
-                        doc.text(descricaoLines, margin + 2, y + 4);
-                        
-                        // Demais colunas
-                        doc.text(servico.quantidade.toString(), docWidth - 120, y + 4, { align: "center" });
-                        doc.text(formatarMoeda(servico.preco), docWidth - 70, y + 4, { align: "right" });
-                        doc.text(formatarMoeda(totalItem), docWidth - margin - 2, y + 4, { align: "right" });
-
-                        y += Math.max(10, descricaoLines.length * 5);
-                        
-                        // Linha divisória entre itens
-                        if (y < docHeight - 50) {
-                            doc.setDrawColor(220, 220, 220);
-                            doc.line(margin, y, docWidth - margin, y);
-                            y += 5;
+                    // Configurar a tabela
+                    doc.autoTable({
+                        startY: y,
+                        head: [tableColumns.map(col => col.header)],
+                        body: tableData.map(row => tableColumns.map(col => row[col.dataKey])),
+                        margin: { left: margin, right: margin },
+                        styles: {
+                            fontSize: 8,
+                            cellPadding: 2,
+                            lineColor: [200, 200, 200],
+                            lineWidth: 0.1
+                        },
+                        headStyles: {
+                            fillColor: [primaryColor[0], primaryColor[1], primaryColor[2]],
+                            textColor: [255, 255, 255],
+                            fontStyle: 'bold'
+                        },
+                        alternateRowStyles: {
+                            fillColor: [248, 248, 248]
+                        },
+                        columnStyles: {
+                            0: { cellWidth: 'auto' },
+                            1: { cellWidth: 20, halign: 'center' },
+                            2: { cellWidth: 35, halign: 'right' },
+                            3: { cellWidth: 35, halign: 'right' }
+                        },
+                        // Limitar altura da tabela para caber na página
+                        didDrawPage: function(data) {
+                            // Verificar se a tabela está muito longa e ajustar
+                            if (data.cursor.y > docHeight - 40) {
+                                // Se chegou muito perto do fim, reduzir fonte
+                                doc.setFontSize(7);
+                            }
                         }
                     });
 
-                    // Linha do total
-                    y += 5;
-                    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                    doc.line(margin, y, docWidth - margin, y);
-                    y += 8;
+                    // Atualizar Y para após a tabela
+                    y = doc.autoTable.previous.finalY + 5;
 
+                    // Adicionar linha do total
+                    const totalGeral = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
+                    
+                    doc.setFontSize(9);
                     doc.setFont("helvetica", "bold");
                     doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-                    doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
+                    doc.rect(margin, y, docWidth - (margin * 2), 8, 'F');
                     
-                    doc.text("TOTAL GERAL", margin + 2, y + 7);
-                    doc.text(formatarMoeda(totalGeral), docWidth - margin - 2, y + 7, { align: "right" });
+                    doc.text("TOTAL GERAL", margin + 5, y + 5.5);
+                    doc.text(formatarMoeda(totalGeral), docWidth - margin - 5, y + 5.5, { align: "right" });
 
-                    y += 20;
+                    y += 15;
                 }
 
-                // Seção Assinaturas
-                // Verifica se precisa de nova página para as assinaturas
-                if (y > docHeight - 60) {
-                    doc.addPage();
-                    y = margin;
-                }
-
-                const signatureY = docHeight - 50;
-                const sigWidth = 80;
-                const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
-                const sigRightX = docWidth - margin - (docWidth / 4) - (sigWidth / 2);
+                // Seção Assinaturas - Layout compacto
+                const signatureY = Math.min(docHeight - 25, y + 20); // Garantir que caiba na página
                 
                 // Linha do Recebedor
                 doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
-                doc.setFontSize(10);
+                doc.line(margin, signatureY, margin + 70, signatureY);
+                doc.setFontSize(8);
                 doc.setFont("helvetica", "normal");
                 doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
-                doc.setFontSize(9);
+                
+                // Truncar nome se for muito longo
+                const recebedorNomeTrunc = doc.splitTextToSize(recebedorNome, 70);
+                doc.text(recebedorNomeTrunc[0], margin + 35, signatureY + 5, { align: "center", maxWidth: 70 });
+                doc.setFontSize(7);
                 doc.setTextColor(100);
-                doc.text("Assinatura do Recebedor", sigLeftX + sigWidth / 2, signatureY + 15, { align: "center" });
+                doc.text("Assinatura do Recebedor", margin + 35, signatureY + 10, { align: "center" });
 
                 // Linha do Pagador
                 doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
-                doc.setFontSize(10);
+                doc.line(docWidth - margin - 70, signatureY, docWidth - margin, signatureY);
+                doc.setFontSize(8);
                 doc.setFont("helvetica", "normal");
                 doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
-                doc.setFontSize(9);
+                
+                // Truncar nome se for muito longo
+                const pagadorNomeTrunc = doc.splitTextToSize(pagadorNome, 70);
+                doc.text(pagadorNomeTrunc[0], docWidth - margin - 35, signatureY + 5, { align: "center", maxWidth: 70 });
+                doc.setFontSize(7);
                 doc.setTextColor(100);
-                doc.text("Assinatura do Pagador", sigRightX + sigWidth / 2, signatureY + 15, { align: "center" });
+                doc.text("Assinatura do Pagador", docWidth - margin - 35, signatureY + 10, { align: "center" });
 
-                // Data de Emissão (Rodapé)
-                const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-                doc.setFontSize(10);
+                // Data de Emissão (Rodapé compacto)
+                const hoje = new Date().toLocaleDateString('pt-BR');
+                doc.setFontSize(8);
                 doc.setFont("helvetica", "normal");
                 doc.setTextColor(100);
-                doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - margin + 5, { align: "center" });
+                doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - margin, { align: "center" });
 
                 // Salvar o PDF
                 const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
@@ -802,37 +809,35 @@
             }
         }
 
-        // Funções auxiliares para o PDF
-        function drawSectionHeader(doc, text, y, color) {
-            const margin = 20;
-            const docWidth = doc.internal.pageSize.getWidth();
+        // Funções auxiliares compactas para o PDF
+        function drawCompactSectionHeader(doc, text, y, color, x) {
+            const width = 70;
             
-            doc.setFontSize(12);
+            doc.setFontSize(9);
             doc.setFont("helvetica", "bold");
             doc.setFillColor(color[0], color[1], color[2]);
             doc.setTextColor(255, 255, 255);
-            doc.rect(margin, y, docWidth - (margin * 2), 8, 'F');
-            doc.text(text.toUpperCase(), margin + 5, y + 6);
+            doc.rect(x, y, width, 6, 'F');
+            doc.text(text.toUpperCase(), x + 3, y + 4);
         }
 
-        function drawInfoBlock(doc, y, data) {
-            const labelWidth = 45;
-            const margin = 20;
-            doc.setFontSize(10);
+        function drawCompactInfoBlock(doc, y, data, x, maxWidth) {
+            const labelWidth = 28;
+            doc.setFontSize(8);
             doc.setFont("helvetica", "normal");
             doc.setTextColor(51, 51, 51);
 
             data.forEach(([label, value]) => {
                 if (value && value.trim() !== "") {
                     doc.setFont("helvetica", "bold");
-                    doc.text(label, margin, y);
+                    doc.text(label, x, y);
                     doc.setFont("helvetica", "normal");
                     
                     // Quebra de texto se for muito longo
-                    const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
-                    doc.text(lines, margin + labelWidth, y);
+                    const lines = doc.splitTextToSize(value, maxWidth - labelWidth);
+                    doc.text(lines, x + labelWidth, y);
                     
-                    y += lines.length * 5 + 2;
+                    y += lines.length * 3.5 + 1;
                 }
             });
             return y;
