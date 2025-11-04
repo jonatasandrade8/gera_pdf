@@ -60,6 +60,14 @@
         .section-title { color: #667eea; margin-top: 25px; margin-bottom: 15px; font-size: 16px; font-weight: 600; }
         .error { color: #ff6b6b; font-size: 12px; margin-top: 5px; }
         .success { color: #48bb78; font-size: 12px; margin-top: 5px; }
+
+        /* Estilos para o CRUD */
+        .saved-receipts-list { margin-top: 20px; max-height: 200px; overflow-y: auto; background: #f9f9f9; border-radius: 6px; padding: 10px; }
+        .saved-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 8px; }
+        .saved-item-name { font-weight: 500; }
+        .saved-item-actions button { margin-left: 8px; padding: 6px 10px; font-size: 12px; }
+        .btn-load { background: #667eea; color: white; border: none; }
+        .btn-delete { background: #ff6b6b; color: white; border: none; }
     </style>
 </head>
 <body>
@@ -70,11 +78,9 @@
         </div>
 
         <div class="content">
-            <!-- Formulário -->
             <div class="form-section">
                 <h2>Informações do Recibo</h2>
 
-                <!-- RECEBEDOR -->
                 <div class="section-title">👤 Recebedor</div>
                 
                 <div class="type-selector">
@@ -90,7 +96,7 @@
                 <div class="row">
                     <div class="form-group">
                         <label id="label-recebedor-doc">CPF *</label>
-                        <input type="text" id="recebedor-doc" placeholder="000.000.000-00" maxlength="14" oninput="atualizarPrevia()">
+                        <input type="text" id="recebedor-doc" placeholder="000.000.000-00" maxlength="18" oninput="atualizarPrevia()" onblur="buscarCNPJ('recebedor')">
                     </div>
                     <div class="form-group">
                         <label>Telefone *</label>
@@ -132,7 +138,6 @@
                     </div>
                 </div>
 
-                <!-- PAGADOR -->
                 <div class="section-title">💰 Pagador</div>
 
                 <div class="type-selector">
@@ -148,7 +153,7 @@
                 <div class="row">
                     <div class="form-group">
                         <label id="label-pagador-doc">CPF</label>
-                        <input type="text" id="pagador-doc" placeholder="000.000.000-00" maxlength="14" oninput="atualizarPrevia()">
+                        <input type="text" id="pagador-doc" placeholder="000.000.000-00" maxlength="18" oninput="atualizarPrevia()" onblur="buscarCNPJ('pagador')">
                     </div>
                     <div class="form-group">
                         <label>Telefone</label>
@@ -190,7 +195,6 @@
                     </div>
                 </div>
 
-                <!-- SERVIÇOS/PRODUTOS -->
                 <div class="section-title">🛍️ Produtos/Serviços</div>
 
                 <div class="services-list" id="services-list">
@@ -199,7 +203,6 @@
 
                 <button class="btn btn-primary" onclick="adicionarServico()">+ Adicionar Produto/Serviço</button>
 
-                <!-- DATA/PERÍODO DO SERVIÇO -->
                 <div class="section-title">📅 Data/Período da Prestação de Serviço</div>
 
                 <div class="row full">
@@ -230,9 +233,15 @@
                 </div>
 
                 <button class="btn btn-secondary" onclick="gerarPDF()">📥 Gerar PDF</button>
+
+                <div class="section-title">💾 Gerenciamento de Recibos</div>
+                <button class="btn btn-primary" onclick="salvarRecibo()" style="background-color: #e67e22;">Salvar Recibo Atual</button>
+                <div class="saved-receipts-list" id="lista-recibos-salvos">
+                    <p style="color: #999; text-align: center; padding: 10px;">Nenhum recibo salvo.</p>
+                </div>
+
             </div>
 
-            <!-- Preview -->
             <div class="form-section">
                 <h2>Prévia do Recibo</h2>
                 <div class="document-preview" id="preview"></div>
@@ -244,15 +253,30 @@
         let servicos = [];
         let recebedorType = 'pf';
         let pagadorType = 'pf';
+        let recibosSalvos = [];
+
+        // --- Funções de Gerenciamento de Tipo (PF/PJ) ---
 
         function setRecebedorType(type) {
             recebedorType = type;
             document.getElementById('btn-recebedor-pf').classList.toggle('active', type === 'pf');
             document.getElementById('btn-recebedor-pj').classList.toggle('active', type === 'pj');
-            document.getElementById('label-recebedor-nome').textContent = type === 'pf' ? 'Nome Completo *' : 'Razão Social *';
-            document.getElementById('label-recebedor-doc').textContent = type === 'pf' ? 'CPF *' : 'CNPJ *';
-            document.getElementById('recebedor-doc').value = '';
-            document.getElementById('recebedor-doc').placeholder = type === 'pf' ? '000.000.000-00' : '00.000.000/0000-00';
+            const labelNome = document.getElementById('label-recebedor-nome');
+            const labelDoc = document.getElementById('label-recebedor-doc');
+            const inputDoc = document.getElementById('recebedor-doc');
+            
+            if (type === 'pf') {
+                labelNome.textContent = 'Nome Completo *';
+                labelDoc.textContent = 'CPF *';
+                inputDoc.placeholder = '000.000.000-00';
+                inputDoc.maxLength = 14;
+            } else {
+                labelNome.textContent = 'Razão Social *';
+                labelDoc.textContent = 'CNPJ *';
+                inputDoc.placeholder = '00.000.000/0000-00';
+                inputDoc.maxLength = 18;
+            }
+            inputDoc.value = '';
             atualizarPrevia();
         }
 
@@ -260,17 +284,32 @@
             pagadorType = type;
             document.getElementById('btn-pagador-pf').classList.toggle('active', type === 'pf');
             document.getElementById('btn-pagador-pj').classList.toggle('active', type === 'pj');
-            document.getElementById('label-pagador-nome').textContent = type === 'pf' ? 'Nome Completo' : 'Razão Social';
-            document.getElementById('label-pagador-doc').textContent = type === 'pf' ? 'CPF' : 'CNPJ';
-            document.getElementById('pagador-doc').value = '';
-            document.getElementById('pagador-doc').placeholder = type === 'pf' ? '000.000.000-00' : '00.000.000/0000-00';
+            const labelNome = document.getElementById('label-pagador-nome');
+            const labelDoc = document.getElementById('label-pagador-doc');
+            const inputDoc = document.getElementById('pagador-doc');
+
+            if (type === 'pf') {
+                labelNome.textContent = 'Nome Completo';
+                labelDoc.textContent = 'CPF';
+                inputDoc.placeholder = '000.000.000-00';
+                inputDoc.maxLength = 14;
+            } else {
+                labelNome.textContent = 'Razão Social';
+                labelDoc.textContent = 'CNPJ';
+                inputDoc.placeholder = '00.000.000/0000-00';
+                inputDoc.maxLength = 18;
+            }
+            inputDoc.value = '';
             atualizarPrevia();
         }
 
+        // --- Funções de Busca (API) ---
+
         function buscarCEP(tipo) {
-            const cep = document.getElementById(tipo + '-cep').value.replace(/\D/g, '');
+            const cepInput = document.getElementById(tipo + '-cep');
+            const cep = cepInput.value.replace(/\D/g, '');
             if (cep.length !== 8) return;
-            
+
             fetch(`https://viacep.com.br/ws/${cep}/json/`)
                 .then(res => res.json())
                 .then(data => {
@@ -278,23 +317,66 @@
                         document.getElementById(tipo + '-rua').value = data.logradouro;
                         document.getElementById(tipo + '-cidade').value = data.localidade;
                         document.getElementById(tipo + '-uf').value = data.uf;
+                        document.getElementById(tipo + '-num').focus(); // Foca no número
                         atualizarPrevia();
                     } else {
                         alert('CEP não encontrado!');
+                        cepInput.value = '';
                     }
                 })
-                .catch(err => alert('Erro ao buscar CEP: ' + err));
+                .catch(err => {
+                    alert('Erro ao buscar CEP: ' + err);
+                    console.error(err);
+                });
         }
+
+        // NOVA FUNÇÃO: Buscar CNPJ
+        function buscarCNPJ(tipo) {
+            const currentType = (tipo === 'recebedor') ? recebedorType : pagadorType;
+            if (currentType !== 'pj') return; // Só busca se for PJ
+
+            const cnpjInput = document.getElementById(tipo + '-doc');
+            const cnpj = cnpjInput.value.replace(/\D/g, '');
+            if (cnpj.length !== 14) return;
+
+            // Usando a API pública brasilapi.com.br (gratuita e sem CORS)
+            fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('CNPJ não encontrado ou API indisponível');
+                    return res.json();
+                })
+                .then(data => {
+                    document.getElementById(tipo + '-nome').value = data.razao_social || '';
+                    document.getElementById(tipo + '-rua').value = data.logradouro || '';
+                    document.getElementById(tipo + '-num').value = data.numero || '';
+                    document.getElementById(tipo + '-comp').value = data.complemento || '';
+                    document.getElementById(tipo + '-cep').value = data.cep || '';
+                    document.getElementById(tipo + '-cidade').value = data.municipio || '';
+                    document.getElementById(tipo + '-uf').value = data.uf || '';
+                    document.getElementById(tipo + '-tel').value = data.ddd_telefone_1 || '';
+                    
+                    atualizarPrevia();
+                })
+                .catch(err => {
+                    alert('Erro ao buscar CNPJ: ' + err.message);
+                    console.error(err);
+                });
+        }
+
+
+        // --- Funções de Gerenciamento de Serviços (Item do Recibo) ---
 
         function adicionarServico() {
             const id = Date.now();
             servicos.push({ id, descricao: '', quantidade: 1, preco: 0 });
             renderizarServicos();
+            atualizarPrevia(); // Garante que a prévia atualize mesmo com item vazio
         }
 
         function removerServico(id) {
             servicos = servicos.filter(s => s.id !== id);
             renderizarServicos();
+            atualizarPrevia(); // Atualiza prévia e total
         }
 
         function atualizarServico(id, campo, valor) {
@@ -305,8 +387,7 @@
                 } else {
                     servico[campo] = valor;
                 }
-                atualizarPrevia();
-                calcularTotal();
+                atualizarPrevia(); // Atualiza prévia e total
             }
         }
 
@@ -314,6 +395,7 @@
             const lista = document.getElementById('services-list');
             if (servicos.length === 0) {
                 lista.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>';
+                calcularTotal(); // Recalcula para zerar o total se o último item for removido
                 return;
             }
 
@@ -321,24 +403,29 @@
                 <div class="service-item">
                     <div class="service-field">
                         <label>Descrição:</label>
-                        <input type="text" placeholder="Ex: Consultoria, Desenvolvimento, Aluguel..." value="${s.descricao}" onchange="atualizarServico(${s.id}, 'descricao', this.value)" oninput="atualizarServico(${s.id}, 'descricao', this.value)">
+                        <input type="text" placeholder="Ex: Consultoria, Desenvolvimento, Aluguel..." value="${s.descricao}" oninput="atualizarServico(${s.id}, 'descricao', this.value)">
                     </div>
                     <div class="service-row">
                         <div class="service-field">
                             <label>Quantidade:</label>
-                            <input type="number" min="0" step="0.01" placeholder="1" value="${s.quantidade}" onchange="atualizarServico(${s.id}, 'quantidade', this.value)" oninput="atualizarServico(${s.id}, 'quantidade', this.value)">
+                            <input type="number" min="0" step="0.01" placeholder="1" value="${s.quantidade}" oninput="atualizarServico(${s.id}, 'quantidade', this.value)">
                         </div>
                         <div class="service-field">
                             <label>Preço UNIT:</label>
-                            <input type="number" min="0" step="0.01" placeholder="0.00" value="${s.preco}" onchange="atualizarServico(${s.id}, 'preco', this.value)" oninput="atualizarServico(${s.id}, 'preco', this.value)">
+                            <input type="number" min="0" step="0.01" placeholder="0.00" value="${s.preco}" oninput="atualizarServico(${s.id}, 'preco', this.value)">
                         </div>
                         <div class="service-field">
+                            <label>&nbsp;</label>
                             <button class="btn-remove-service" onclick="removerServico(${s.id})">✕ Remover</button>
                         </div>
                     </div>
                 </div>
             `).join('');
+            
+            calcularTotal(); // Atualiza o total sempre que renderiza
         }
+
+        // --- Funções de Cálculo e Formatação ---
 
         function calcularTotal() {
             const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
@@ -347,8 +434,10 @@
         }
 
         function formatarMoeda(valor) {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
         }
+
+        // --- Funções de Atualização da UI (Preview) ---
 
         function atualizarPrevia() {
             const total = calcularTotal();
@@ -431,7 +520,7 @@
                             <tbody>
                                 ${servicos.map(s => `
                                     <tr>
-                                        <td>${s.descricao}</td>
+                                        <td>${s.descricao || 'N/D'}</td>
                                         <td style="text-align: center;">${s.quantidade}</td>
                                         <td style="text-align: right;">${formatarMoeda(s.preco)}</td>
                                         <td style="text-align: right;">${formatarMoeda(s.quantidade * s.preco)}</td>
@@ -450,32 +539,53 @@
             document.getElementById('preview').innerHTML = html;
         }
 
+        // --- Funções de Validação e Geração de PDF ---
+
         function validarFormulario() {
-            const campos = [
+            // Campos obrigatórios do Recebedor
+            const camposRecebedor = [
                 'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
                 'recebedor-rua', 'recebedor-num', 'recebedor-cidade', 'recebedor-uf'
             ];
 
-            for (let campo of campos) {
-                if (!document.getElementById(campo).value.trim()) {
-                    alert(`Por favor, preencha o campo obrigatório: ${campo.replace('-', ' ')}`);
+            for (let campo of camposRecebedor) {
+                const el = document.getElementById(campo);
+                if (!el.value.trim()) {
+                    alert(`O campo "${el.previousElementSibling.textContent}" do RECEBEDOR é obrigatório.`);
+                    el.focus();
                     return false;
                 }
             }
-
-            if (!document.getElementById('periodo-inicio').value || !document.getElementById('periodo-fim').value) {
-                alert('Por favor, preencha a data/período da prestação de serviço');
+            
+            // Campos obrigatórios do Período
+            const camposPeriodo = ['periodo-inicio', 'periodo-fim'];
+             for (let campo of camposPeriodo) {
+                const el = document.getElementById(campo);
+                if (!el.value) {
+                    alert(`O campo "${el.previousElementSibling.textContent}" é obrigatório.`);
+                    el.focus();
+                    return false;
+                }
+            }
+            
+            // Validação de Data
+            const inicio = new Date(document.getElementById('periodo-inicio').value);
+            const fim = new Date(document.getElementById('periodo-fim').value);
+            if (fim < inicio) {
+                alert('A data de término não pode ser anterior à data de início.');
                 return false;
             }
 
+            // Validação dos Serviços
             if (servicos.length === 0) {
-                alert('Adicione pelo menos um produto ou serviço');
+                alert('Adicione pelo menos um produto ou serviço.');
                 return false;
             }
 
-            for (let s of servicos) {
+            for (let i = 0; i < servicos.length; i++) {
+                const s = servicos[i];
                 if (!s.descricao.trim() || s.quantidade <= 0 || s.preco <= 0) {
-                    alert('Todos os produtos/serviços devem ter descrição, quantidade e preço preenchidos');
+                    alert(`O serviço #${i + 1} está incompleto. Todos os serviços devem ter descrição, quantidade > 0 e preço > 0.`);
                     return false;
                 }
             }
@@ -483,89 +593,85 @@
             return true;
         }
 
+        // FUNÇÃO CORRIGIDA: Gerar PDF
         function gerarPDF() {
             if (!validarFormulario()) return;
 
-            const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
+            const total = calcularTotal(); // Pega o valor já formatado
+            const totalBruto = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
+
             const recebedorEnd = [
                 document.getElementById('recebedor-rua').value,
                 document.getElementById('recebedor-num').value,
                 document.getElementById('recebedor-comp').value,
+            ].filter(Boolean).join(', ') + (document.getElementById('recebedor-comp').value ? ' - ' : '') + 
+            [
                 document.getElementById('recebedor-cidade').value,
                 document.getElementById('recebedor-uf').value
-            ].filter(Boolean).join(', ');
+            ].filter(Boolean).join(' / ');
 
             const pagadorEnd = [
                 document.getElementById('pagador-rua').value,
                 document.getElementById('pagador-num').value,
                 document.getElementById('pagador-comp').value,
+            ].filter(Boolean).join(', ') + (document.getElementById('pagador-comp').value ? ' - ' : '') + 
+            [
                 document.getElementById('pagador-cidade').value,
                 document.getElementById('pagador-uf').value
-            ].filter(Boolean).join(', ');
+            ].filter(Boolean).join(' / ');
 
-            const hoje = new Date().toLocaleDateString('pt-BR');
+            const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
             
-            const periodoTipo = document.getElementById('periodo-tipo').value;
-            const periodoInicio = new Date(document.getElementById('periodo-inicio').value).toLocaleDateString('pt-BR');
-            const periodoFim = new Date(document.getElementById('periodo-fim').value).toLocaleDateString('pt-BR');
+            const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
             
-            let textoPeriodicidade = '';
-            switch(periodoTipo) {
-                case 'dia':
-                    textoPeriodicidade = `Período do ${periodoInicio} ao ${periodoFim} (em dias)`;
-                    break;
-                case 'mes':
-                    textoPeriodicidade = `Período do ${periodoInicio} ao ${periodoFim} (em meses)`;
-                    break;
-                case 'ano':
-                    textoPeriodicidade = `Período do ${periodoInicio} ao ${periodoFim} (em anos)`;
-                    break;
-            }
+            // Formata datas corretamente (o input 'date' usa fuso UTC, precisamos corrigir)
+            const dataInicioInput = document.getElementById('periodo-inicio').value;
+            const dataFimInput = document.getElementById('periodo-fim').value;
+            
+            const periodoInicio = new Date(dataInicioInput + 'T03:00:00').toLocaleDateString('pt-BR');
+            const periodoFim = new Date(dataFimInput + 'T03:00:00').toLocaleDateString('pt-BR');
+            
+            let textoPeriodicidade = `${periodoTipo} de ${periodoInicio} a ${periodoFim}`;
 
+
+            // CORREÇÃO: O HTML do PDF estava com estrutura inválida.
             const html = `
                 <!DOCTYPE html>
                 <html lang="pt-BR">
                 <head>
                     <meta charset="UTF-8">
                     <style>
-                        * { margin: 0; padding: 0; }
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
                         body { 
-                            font-family: 'Segoe UI', Arial, sans-serif; 
+                            font-family: Arial, sans-serif; 
                             color: #333; 
-                            line-height: 1.6;
-                            background: white;
+                            line-height: 1.5;
                         }
                         .pdf-container { 
-                            width: 210mm; 
-                            height: 297mm; 
+                            width: 100%; 
+                            max-width: 800px;
                             margin: 0 auto; 
-                            padding: 20mm;
-                            background: white;
+                            padding: 40px;
                         }
                         .header { 
                             text-align: center; 
-                            border-bottom: 3px solid #333; 
-                            padding-bottom: 15mm; 
-                            margin-bottom: 20mm; 
+                            border-bottom: 2px solid #333; 
+                            padding-bottom: 20px; 
+                            margin-bottom: 30px; 
                         }
                         .header h1 { 
                             margin: 0; 
                             font-size: 28px; 
-                            letter-spacing: 2px;
-                        }
-                        .header p { 
-                            margin: 5px 0 0 0; 
-                            font-size: 12px; 
-                            color: #666;
+                            letter-spacing: 1px;
                         }
                         .section { 
-                            margin-bottom: 15mm; 
+                            margin-bottom: 25px; 
                         }
                         .section h2 { 
-                            background: #f5f5f5; 
+                            background: #f4f4f4; 
                             padding: 8px 12px; 
-                            margin: 0 0 10px 0; 
-                            font-size: 12px; 
+                            margin-bottom: 15px; 
+                            font-size: 14px; 
                             border-left: 4px solid #667eea;
                             font-weight: bold;
                             text-transform: uppercase;
@@ -573,79 +679,72 @@
                         .info-table { 
                             width: 100%; 
                             border-collapse: collapse; 
-                            font-size: 12px; 
-                            margin-bottom: 10mm;
+                            font-size: 13px; 
                         }
                         .info-table td { 
                             padding: 6px 0; 
-                            border-bottom: 1px solid #ddd;
+                            vertical-align: top;
                         }
                         .info-table td:first-child { 
-                            width: 100px; 
+                            width: 130px; 
                             font-weight: bold;
+                            color: #555;
                         }
                         .services-table { 
                             width: 100%; 
                             border-collapse: collapse; 
-                            font-size: 11px;
+                            font-size: 12px;
                             margin-top: 10px;
                         }
                         .services-table th { 
-                            background: #f5f5f5; 
-                            padding: 8px; 
+                            background: #f4f4f4; 
+                            padding: 10px; 
                             text-align: left; 
                             border-bottom: 2px solid #667eea; 
                             font-weight: bold; 
-                            font-size: 11px;
                         }
                         .services-table td { 
-                            padding: 8px; 
-                            border-bottom: 1px solid #e0e0e0;
+                            padding: 10px; 
+                            border-bottom: 1px solid #ddd;
                         }
-                        .services-table tr:last-child td { 
+                        .services-table .total-row td { 
                             border-top: 2px solid #667eea; 
                             border-bottom: 2px solid #667eea; 
                             font-weight: bold;
+                            font-size: 14px;
                             background: #f9f9f9;
                         }
                         .text-right { text-align: right; }
                         .text-center { text-align: center; }
+                        
                         .signatures { 
-                            margin-top: 30mm; 
+                            margin-top: 50px; 
                             display: grid; 
                             grid-template-columns: 1fr 1fr; 
-                            gap: 30mm;
+                            gap: 50px;
                         }
                         .signature-box { 
                             text-align: center;
+                            padding-top: 20px;
                         }
                         .signature-line { 
-                            border-top: 2px solid #333; 
-                            height: 30px;
-                            margin-bottom: 5px;
+                            border-top: 1px solid #333; 
+                            margin-bottom: 8px;
                         }
                         .signature-name { 
                             font-weight: bold;
-                            font-size: 12px;
+                            font-size: 13px;
                             margin-bottom: 3px;
                         }
                         .signature-label { 
-                            font-size: 10px; 
+                            font-size: 11px; 
                             color: #666;
                         }
                         .date-section { 
-                            margin-top: 20mm; 
+                            margin-top: 40px; 
                             text-align: center; 
-                            font-size: 11px;
-                            border-top: 1px solid #ddd;
-                            padding-top: 10px;
-                        }
-                        .period-box {
-                            background: #f5f5f5;
-                            padding: 10px;
-                            border-radius: 4px;
-                            margin-bottom: 10mm;
                             font-size: 12px;
+                            color: #555;
                         }
                     </style>
                 </head>
@@ -653,119 +752,258 @@
                     <div class="pdf-container">
                         <div class="header">
                             <h1>RECIBO</h1>
-                            <p>Referente aos serviços prestados</p>
                         </div>
 
-                    <div class="section">
-                        <h2>RECEBEDOR</h2>
-                        <table>
-                            <tr>
-                                <td>Nome/Razão Social:</td>
-                                <td>${document.getElementById('recebedor-nome').value}</td>
-                            </tr>
-                            <tr>
-                                <td>${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
-                                <td>${document.getElementById('recebedor-doc').value}</td>
-                            </tr>
-                            <tr>
-                                <td>Telefone:</td>
-                                <td>${document.getElementById('recebedor-tel').value}</td>
-                            </tr>
-                            <tr>
-                                <td>Endereço:</td>
-                                <td>${recebedorEnd}</td>
-                            </tr>
-                        </table>
-                    </div>
-
-                    <div class="section">
-                        <h2>PAGADOR</h2>
-                        <table>
-                            <tr>
-                                <td>Nome/Razão Social:</td>
-                                <td>${document.getElementById('pagador-nome').value || '—'}</td>
-                            </tr>
-                            ${document.getElementById('pagador-doc').value ? `
+                        <div class="section">
+                            <h2>RECEBEDOR (PRESTADOR)</h2>
+                            <table class="info-table">
                                 <tr>
-                                    <td>${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
-                                    <td>${document.getElementById('pagador-doc').value}</td>
+                                    <td>Nome/Razão:</td>
+                                    <td>${document.getElementById('recebedor-nome').value}</td>
                                 </tr>
-                            ` : ''}
-                            ${document.getElementById('pagador-tel').value ? `
+                                <tr>
+                                    <td>${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
+                                    <td>${document.getElementById('recebedor-doc').value}</td>
+                                </tr>
                                 <tr>
                                     <td>Telefone:</td>
-                                    <td>${document.getElementById('pagador-tel').value}</td>
+                                    <td>${document.getElementById('recebedor-tel').value}</td>
                                 </tr>
-                            ` : ''}
-                            ${pagadorEnd ? `
                                 <tr>
                                     <td>Endereço:</td>
-                                    <td>${pagadorEnd}</td>
+                                    <td>${recebedorEnd}</td>
                                 </tr>
-                            ` : ''}
-                        </table>
-                    </div>
+                            </table>
+                        </div>
 
-                    <div class="section">
-                        <h2>DESCRIÇÃO DOS SERVIÇOS/PRODUTOS</h2>
-                        <table class="services-table">
-                            <thead>
+                        <div class="section">
+                            <h2>PAGADOR (CLIENTE)</h2>
+                            <table class="info-table">
                                 <tr>
-                                    <th>Descrição</th>
-                                    <th style="width: 60px; text-align: center;">Quantidade</th>
-                                    <th style="width: 100px; text-align: right;">Preço Unitário</th>
-                                    <th style="width: 100px; text-align: right;">Total</th>
+                                    <td>Nome/Razão:</td>
+                                    <td>${document.getElementById('pagador-nome').value || '—'}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${servicos.map(s => `
+                                ${document.getElementById('pagador-doc').value ? `
                                     <tr>
-                                        <td>${s.descricao}</td>
-                                        <td style="text-align: center;">${s.quantidade}</td>
-                                        <td class="text-right">${formatarMoeda(s.preco)}</td>
-                                        <td class="text-right">${formatarMoeda(s.quantidade * s.preco)}</td>
+                                        <td>${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
+                                        <td>${document.getElementById('pagador-doc').value}</td>
                                     </tr>
-                                `).join('')}
-                                <tr>
-                                    <td colspan="3" style="text-align: right; padding-right: 10px;">TOTAL GERAL</td>
-                                    <td class="text-right">${formatarMoeda(total)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                        <div class="signature-box">
-                            <div class="line"></div>
-                            <strong>${document.getElementById('recebedor-nome').value}</strong>
-                            <p style="margin: 3px 0; font-size: 12px;">${recebedorType === 'pf' ? 'Assinatura - Recebedor' : 'Assinatura - Recebedor'}</p>
+                                ` : ''}
+                                ${document.getElementById('pagador-tel').value ? `
+                                    <tr>
+                                        <td>Telefone:</td>
+                                        <td>${document.getElementById('pagador-tel').value}</td>
+                                    </tr>
+                                ` : ''}
+                                ${pagadorEnd ? `
+                                    <tr>
+                                        <td>Endereço:</td>
+                                        <td>${pagadorEnd}</td>
+                                    </tr>
+                                ` : ''}
+                            </table>
                         </div>
-                        <div class="signature-box">
-                            <div class="line"></div>
-                            <strong>${document.getElementById('pagador-nome').value || 'PAGADOR'}</strong>
-                            <p style="margin: 3px 0; font-size: 12px;">Assinatura - Pagador</p>
-                        </div>
-                    </div>
 
-                    <div class="date-section">
-                        <p>Emitido em: <strong>${hoje}</strong></p>
+                        <div class="section">
+                            <h2>DESCRIÇÃO DOS SERVIÇOS/PRODUTOS</h2>
+                            <table class="services-table">
+                                <thead>
+                                    <tr>
+                                        <th>Descrição</th>
+                                        <th style="width: 60px;" class="text-center">Qtd.</th>
+                                        <th style="width: 100px;" class="text-right">Preço Unit.</th>
+                                        <th style="width: 100px;" class="text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${servicos.map(s => `
+                                        <tr>
+                                            <td>${s.descricao}</td>
+                                            <td class="text-center">${s.quantidade}</td>
+                                            <td class="text-right">${formatarMoeda(s.preco)}</td>
+                                            <td class="text-right">${formatarMoeda(s.quantidade * s.preco)}</td>
+                                        </tr>
+                                    `).join('')}
+                                    <tr class="total-row">
+                                        <td colspan="3" class="text-right">TOTAL GERAL</td>
+                                        <td class="text-right">${formatarMoeda(totalBruto)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="section">
+                            <h2>PERÍODO DE PRESTAÇÃO</h2>
+                            <table class="info-table">
+                                <tr>
+                                    <td style="width: 130px;">Referente a:</td>
+                                    <td>${textoPeriodicidade}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div class="signatures">
+                            <div class="signature-box">
+                                <div class="signature-line"></div>
+                                <div class="signature-name">${document.getElementById('recebedor-nome').value}</div>
+                                <div class="signature-label">Assinatura do Recebedor</div>
+                            </div>
+                            <div class="signature-box">
+                                <div class="signature-line"></div>
+                                <div class="signature-name">${document.getElementById('pagador-nome').value || 'PAGADOR'}</div>
+                                <div class="signature-label">Assinatura do Pagador</div>
+                            </div>
+                        </div>
+
+                        <div class="date-section">
+                            Emitido em: ${hoje}
+                        </div>
                     </div>
                 </body>
                 </html>
             `;
 
             const opt = {
-                margin: 10,
-                filename: 'recibo.pdf',
+                margin: [10, 10, 10, 10], // top, left, bottom, right
+                filename: `recibo_${document.getElementById('recebedor-nome').value.replace(/ /g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
+                html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(html).save();
+            // html2pdf().set(opt).from(html).save();
+            // CORREÇÃO: Usar o elemento previne bugs de renderização de fontes e estilos
+            const element = document.createElement('div');
+            element.innerHTML = html;
+            // É preciso adicionar ao DOM temporariamente para renderizar
+            document.body.appendChild(element); 
+            
+            html2pdf().from(element.firstElementChild).set(opt).save().then(() => {
+                 document.body.removeChild(element); // Limpa o elemento do DOM
+            });
         }
 
-        // Inicializar
-        renderizarServicos();
-        atualizarPrevia();
+        // --- NOVAS FUNÇÕES: CRUD (Salvar, Carregar, Remover) ---
+
+        // Helper para obter todos os dados do formulário
+        function getFormData() {
+            const data = {
+                recebedorType,
+                pagadorType,
+                servicos: [...servicos] // Clona o array de serviços
+            };
+            
+            // Pega todos os inputs e selects
+            const fields = document.querySelectorAll('.form-section input, .form-section select');
+            fields.forEach(field => {
+                if (field.id) {
+                    data[field.id] = field.value;
+                }
+            });
+            return data;
+        }
+
+        // Helper para popular o formulário com dados salvos
+        function populateForm(data) {
+            // Seta os tipos (PF/PJ)
+            setRecebedorType(data.recebedorType || 'pf');
+            setPagadorType(data.pagadorType || 'pf');
+
+            // Popula todos os inputs e selects
+            const fields = document.querySelectorAll('.form-section input, .form-section select');
+            fields.forEach(field => {
+                if (field.id && data[field.id] !== undefined) {
+                    field.value = data[field.id];
+                }
+            });
+
+            // Popula os serviços
+            servicos = data.servicos ? [...data.servicos] : [];
+            
+            // Atualiza a UI
+            renderizarServicos();
+            atualizarPrevia();
+        }
+
+        function salvarRecibo() {
+            let nome = prompt('Digite um nome para este modelo de recibo (Ex: Cliente X Mensal):');
+            if (!nome || !nome.trim()) {
+                alert('Nome inválido. O recibo não foi salvo.');
+                return;
+            }
+            
+            const data = getFormData();
+            data.id = Date.now();
+            data.nome = nome.trim();
+
+            // Adiciona ou atualiza se já existir um com mesmo nome
+            const existingIndex = recibosSalvos.findIndex(r => r.nome.toLowerCase() === data.nome.toLowerCase());
+            if (existingIndex > -1) {
+                if (!confirm('Já existe um recibo com esse nome. Deseja sobrescrevê-lo?')) {
+                    return;
+                }
+                data.id = recibosSalvos[existingIndex].id; // Mantém o ID original
+                recibosSalvos[existingIndex] = data;
+            } else {
+                 recibosSalvos.push(data);
+            }
+
+            localStorage.setItem('recibosGerador', JSON.stringify(recibosSalvos));
+            renderRecibosSalvos();
+            alert('Recibo salvo com sucesso!');
+        }
+
+        function carregarRecibo(id) {
+            const recibo = recibosSalvos.find(r => r.id === id);
+            if (recibo) {
+                if (!confirm(`Deseja carregar o recibo "${recibo.nome}"? Suas alterações atuais serão perdidas.`)) {
+                    return;
+                }
+                populateForm(recibo);
+            }
+        }
+
+        function removerRecibo(id) {
+            const recibo = recibosSalvos.find(r => r.id === id);
+            if (recibo && confirm(`Tem certeza que deseja excluir o recibo salvo "${recibo.nome}"?`)) {
+                recibosSalvos = recibosSalvos.filter(r => r.id !== id);
+                localStorage.setItem('recibosGerador', JSON.stringify(recibosSalvos));
+                renderRecibosSalvos();
+            }
+        }
+
+        function renderRecibosSalvos() {
+            const listaDiv = document.getElementById('lista-recibos-salvos');
+            if (recibosSalvos.length === 0) {
+                listaDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 10px;">Nenhum recibo salvo.</p>';
+                return;
+            }
+
+            listaDiv.innerHTML = recibosSalvos.map(r => `
+                <div class="saved-item">
+                    <span class="saved-item-name">${r.nome}</span>
+                    <div class="saved-item-actions">
+                        <button class="btn btn-load" onclick="carregarRecibo(${r.id})">Carregar</button>
+                        <button class="btn btn-delete" onclick="removerRecibo(${r.id})">Remover</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- Inicialização ---
+        function init() {
+            const salvos = localStorage.getItem('recibosGerador');
+            if (salvos) {
+                recibosSalvos = JSON.parse(salvos);
+            }
+            renderRecibosSalvos();
+            renderizarServicos();
+            atualizarPrevia();
+        }
+
+        // Inicializar a aplicação
+        init();
+        
     </script>
 </body>
 </html>
