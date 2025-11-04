@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
     <title>Gerador de Recibos</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -590,7 +590,7 @@
             return true;
         }
 
-        // --- FUNÇÃO DE GERAR PDF TOTALMENTE REESCRITA ---
+        // --- FUNÇÃO DE GERAR PDF CORRIGIDA ---
         
         function gerarPDF() {
             if (!validarFormulario()) return;
@@ -598,8 +598,8 @@
             // 1. Inicializar o jsPDF
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.autoTable = window.jspdf.autoTable;
-
+            // A LINHA COM BUG FOI REMOVIDA DAQUI
+            
             // 2. Definir variáveis e constantes
             const margin = 15;
             const docWidth = doc.internal.pageSize.getWidth();
@@ -726,23 +726,23 @@
                     doc.text("TOTAL GERAL", data.settings.margin.left + (data.table.columns[0].width + data.table.columns[1].width), tableBottom + 7, { halign: 'right' });
                     doc.text(formatarMoeda(totalBruto), data.table.width + data.settings.margin.left - data.table.columns[3].width, tableBottom + 7, { halign: 'right', width: data.table.columns[3].width });
                 
-                    // Seta o Y para depois da tabela + total
-                    y = tableBottom + 20; 
+                    // CORREÇÃO: Atualiza o 'y' global AQUI,
+                    // depois que a tabela e o total customizado foram desenhados.
+                    y = tableBottom + 20; // +20 para dar espaço após a linha total
                 }
             });
             
-            // Pega o Y final da tabela (jsPDF-AutoTable não retorna isso diretamente)
-            y = doc.autoTable.previous.finalY + 15;
-
+            // A posição 'y' agora é atualizada de forma assíncrona dentro do 'didDrawPage'
 
             // 8. Seção Assinaturas
             // Se o conteúdo for muito grande, pula para uma nova página
             if (y > docHeight - 60) {
                 doc.addPage();
-                y = margin + 10;
+                y = margin + 10; // Reseta 'y' se pular a página
             }
 
-            const signatureY = docHeight - 50; // Posição fixa no fim da página
+            // Posição fixa no fim da página para as assinaturas
+            const signatureY = docHeight - 50; 
             const sigWidth = 80; // Largura da linha de assinatura
             const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
             const sigRightX = margin + (docWidth * 3 / 4) - (docWidth / 4) - (sigWidth / 2);
