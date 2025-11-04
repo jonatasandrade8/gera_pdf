@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de Recibos</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -598,7 +598,6 @@
             // 1. Inicializar o jsPDF
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            // A LINHA COM BUG FOI REMOVIDA DAQUI
             
             // 2. Definir variáveis e constantes
             const margin = 15;
@@ -694,7 +693,11 @@
 
             const totalBruto = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
             
-            doc.autoTable({
+            // ###################
+            // ## AQUI É A CORREÇÃO ##
+            // ###################
+            // Em vez de 'doc.autoTable(...)', usamos 'window.jspdf.autoTable(doc, ...)'
+            window.jspdf.autoTable(doc, {
                 startY: y,
                 head: [tableHead],
                 body: tableBody,
@@ -725,15 +728,14 @@
                     
                     doc.text("TOTAL GERAL", data.settings.margin.left + (data.table.columns[0].width + data.table.columns[1].width), tableBottom + 7, { halign: 'right' });
                     doc.text(formatarMoeda(totalBruto), data.table.width + data.settings.margin.left - data.table.columns[3].width, tableBottom + 7, { halign: 'right', width: data.table.columns[3].width });
-                
-                    // CORREÇÃO: Atualiza o 'y' global AQUI,
-                    // depois que a tabela e o total customizado foram desenhados.
-                    y = tableBottom + 20; // +20 para dar espaço após a linha total
                 }
             });
-            
-            // A posição 'y' agora é atualizada de forma assíncrona dentro do 'didDrawPage'
 
+            // Atualizamos 'y' *depois* que a tabela é desenhada,
+            // pegando a posição final que o plugin armazena.
+            y = doc.autoTable.previous.finalY + 15; // +15 de margem
+
+            
             // 8. Seção Assinaturas
             // Se o conteúdo for muito grande, pula para uma nova página
             if (y > docHeight - 60) {
