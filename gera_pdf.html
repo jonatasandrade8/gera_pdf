@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Recibos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .form-section { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .form-section h2 { color: #333; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
+        input, select, textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .row.full { grid-template-columns: 1fr; }
+        .type-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .type-btn { padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; cursor: pointer; transition: all 0.3s; background: white; font-weight: 500; }
+        .type-btn.active { border-color: #667eea; background: #667eea; color: white; }
+        .services-list { background: #f5f5f5; border-radius: 6px; padding: 15px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }
+        .service-item { background: white; padding: 20px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #667eea; }
+        .service-item:last-child { margin-bottom: 0; }
+        .service-field { margin-bottom: 15px; }
+        .service-field:last-child { margin-bottom: 0; }
+        .service-field label { display: block; margin-bottom: 6px; color: #333; font-weight: 600; font-size: 13px; }
+        .service-field input { width: 100%; }
+        .service-row { display: grid; grid-template-columns: 1fr 1fr 1fr 50px; gap: 15px; align-items: flex-end; }
+        .service-row .service-field { margin-bottom: 0; }
+        .btn-remove-service { background: #ff6b6b; color: white; border: none; padding: 10px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; height: 42px; width: 100%; }
+        .btn-remove-service:hover { background: #ff5252; }
+        .btn-remove { background: #ff6b6b; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; height: 42px; }
+        .btn-remove:hover { background: #ff5252; }
+        .btn { padding: 14px 28px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; width: 100%; }
+        .btn-primary:hover { background: #5568d3; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #48bb78; color: white; width: 100%; margin-top: 10px; }
+        .btn-secondary:hover { background: #38a169; }
+        .total-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: 600; margin-top: 20px; }
+        .total-amount { font-size: 32px; margin-top: 10px; }
+        .document-preview { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 600px; overflow-y: auto; }
+        .preview-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+        .preview-title { font-size: 24px; font-weight: bold; }
+        .preview-section { margin-bottom: 20px; }
+        .preview-section h3 { background: #f5f5f5; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 12px; color: #666; border-left: 4px solid #667eea; }
+        .preview-content { font-size: 13px; line-height: 1.6; }
+        .preview-row { display: grid; grid-template-columns: 120px 1fr; margin-bottom: 5px; gap: 10px; }
+        .preview-label { font-weight: 600; color: #333; }
+        .preview-value { color: #666; }
+        .services-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .services-table th { background: #f5f5f5; padding: 8px; text-align: left; border-bottom: 2px solid #667eea; font-weight: 600; }
+        .services-table td { padding: 8px; border-bottom: 1px solid #e0e0e0; }
+        .services-table tr:last-child td { border-bottom: 2px solid #667eea; }
+        @media (max-width: 1024px) { .content { grid-template-columns: 1fr; } .document-preview { max-height: 500px; } .service-content { grid-template-columns: 1fr; } }
+        .section-title { color: #667eea; margin-top: 25px; margin-bottom: 15px; font-size: 16px; font-weight: 600; }
+        .error { color: #ff6b6b; font-size: 12px; margin-top: 5px; }
+        .success { color: #48bb78; font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Gerador de Recibos</h1>
+            <p>Crie recibos profissionais em PDF de forma rápida e segura</p>
+        </div>
+
+        <div class="content">
+            <!-- Formulário -->
+            <div class="form-section">
+                <h2>Informações do Recibo</h2>
+
+                <!-- RECEBEDOR -->
+                <div class="section-title">👤 Recebedor</div>
+                
+                <div class="type-selector">
+                    <button class="type-btn active" onclick="setRecebedorType('pf')" id="btn-recebedor-pf">Pessoa Física</button>
+                    <button class="type-btn" onclick="setRecebedorType('pj')" id="btn-recebedor-pj">Pessoa Jurídica</button>
+                </div>
+
+                <div class="form-group">
+                    <label id="label-recebedor-nome">Nome Completo *</label>
+                    <input type="text" id="recebedor-nome" placeholder="Ex: João da Silva" oninput="atualizarPrevia()">
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label id="label-recebedor-doc">CPF *</label>
+                        <input type="text" id="recebedor-doc" placeholder="000.000.000-00" maxlength="14" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone *</label>
+                        <input type="tel" id="recebedor-tel" placeholder="(00) 00000-0000" maxlength="15" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>CEP *</label>
+                    <input type="text" id="recebedor-cep" placeholder="00000-000" maxlength="9" onblur="buscarCEP('recebedor')">
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label>Rua *</label>
+                        <input type="text" id="recebedor-rua" placeholder="Endereço" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label>Número *</label>
+                        <input type="text" id="recebedor-num" placeholder="0000" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="row full">
+                    <div class="form-group">
+                        <label>Complemento</label>
+                        <input type="text" id="recebedor-comp" placeholder="Apt, sala, etc" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label>Cidade *</label>
+                        <input type="text" id="recebedor-cidade" placeholder="Cidade" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label>UF *</label>
+                        <input type="text" id="recebedor-uf" placeholder="SP" maxlength="2" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <!-- PAGADOR -->
+                <div class="section-title">💰 Pagador</div>
+
+                <div class="type-selector">
+                    <button class="type-btn active" onclick="setPagadorType('pf')" id="btn-pagador-pf">Pessoa Física</button>
+                    <button class="type-btn" onclick="setPagadorType('pj')" id="btn-pagador-pj">Pessoa Jurídica</button>
+                </div>
+
+                <div class="form-group">
+                    <label id="label-pagador-nome">Nome Completo</label>
+                    <input type="text" id="pagador-nome" placeholder="Ex: Maria da Silva" oninput="atualizarPrevia()">
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label id="label-pagador-doc">CPF</label>
+                        <input type="text" id="pagador-doc" placeholder="000.000.000-00" maxlength="14" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="tel" id="pagador-tel" placeholder="(00) 00000-0000" maxlength="15" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input type="text" id="pagador-cep" placeholder="00000-000" maxlength="9" onblur="buscarCEP('pagador')">
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label>Rua</label>
+                        <input type="text" id="pagador-rua" placeholder="Endereço" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label>Número</label>
+                        <input type="text" id="pagador-num" placeholder="0000" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="row full">
+                    <div class="form-group">
+                        <label>Complemento</label>
+                        <input type="text" id="pagador-comp" placeholder="Apt, sala, etc" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label>Cidade</label>
+                        <input type="text" id="pagador-cidade" placeholder="Cidade" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label>UF</label>
+                        <input type="text" id="pagador-uf" placeholder="SP" maxlength="2" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <!-- SERVIÇOS/PRODUTOS -->
+                <div class="section-title">🛍️ Produtos/Serviços</div>
+
+                <div class="services-list" id="services-list">
+                    <p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>
+                </div>
+
+                <button class="btn btn-primary" onclick="adicionarServico()">+ Adicionar Produto/Serviço</button>
+
+                <!-- DATA/PERÍODO DO SERVIÇO -->
+                <div class="section-title">📅 Data/Período da Prestação de Serviço</div>
+
+                <div class="row full">
+                    <div class="form-group">
+                        <label>Tipo de Período *</label>
+                        <select id="periodo-tipo" onchange="atualizarPrevia()">
+                            <option value="dia">Por Dia(s)</option>
+                            <option value="mes">Por Mês(es)</option>
+                            <option value="ano">Por Ano(s)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label id="label-periodo-inicio">Data de Início *</label>
+                        <input type="date" id="periodo-inicio" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="form-group">
+                        <label id="label-periodo-fim">Data de Término *</label>
+                        <input type="date" id="periodo-fim" oninput="atualizarPrevia()">
+                    </div>
+                </div>
+
+                <div class="total-box">
+                    <div>Total do Recibo</div>
+                    <div class="total-amount" id="total-amount">R$ 0,00</div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="gerarPDF()">📥 Gerar PDF</button>
+            </div>
+
+            <!-- Preview -->
+            <div class="form-section">
+                <h2>Prévia do Recibo</h2>
+                <div class="document-preview" id="preview"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let servicos = [];
+        let recebedorType = 'pf';
+        let pagadorType = 'pf';
+
+        function setRecebedorType(type) {
+            recebedorType = type;
+            document.getElementById('btn-recebedor-pf').classList.toggle('active', type === 'pf');
+            document.getElementById('btn-recebedor-pj').classList.toggle('active', type === 'pj');
+            document.getElementById('label-recebedor-nome').textContent = type === 'pf' ? 'Nome Completo *' : 'Razão Social *';
+            document.getElementById('label-recebedor-doc').textContent = type === 'pf' ? 'CPF *' : 'CNPJ *';
+            document.getElementById('recebedor-doc').value = '';
+            document.getElementById('recebedor-doc').placeholder = type === 'pf' ? '000.000.000-00' : '00.000.000/0000-00';
+            atualizarPrevia();
+        }
+
+        function setPagadorType(type) {
+            pagadorType = type;
+            document.getElementById('btn-pagador-pf').classList.toggle('active', type === 'pf');
+            document.getElementById('btn-pagador-pj').classList.toggle('active', type === 'pj');
+            document.getElementById('label-pagador-nome').textContent = type === 'pf' ? 'Nome Completo' : 'Razão Social';
+            document.getElementById('label-pagador-doc').textContent = type === 'pf' ? 'CPF' : 'CNPJ';
+            document.getElementById('pagador-doc').value = '';
+            document.getElementById('pagador-doc').placeholder = type === 'pf' ? '000.000.000-00' : '00.000.000/0000-00';
+            atualizarPrevia();
+        }
+
+        function buscarCEP(tipo) {
+            const cep = document.getElementById(tipo + '-cep').value.replace(/\D/g, '');
+            if (cep.length !== 8) return;
+            
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.erro) {
+                        document.getElementById(tipo + '-rua').value = data.logradouro;
+                        document.getElementById(tipo + '-cidade').value = data.localidade;
+                        document.getElementById(tipo + '-uf').value = data.uf;
+                        atualizarPrevia();
+                    } else {
+                        alert('CEP não encontrado!');
+                    }
+                })
+                .catch(err => alert('Erro ao buscar CEP: ' + err));
+        }
+
+        function adicionarServico() {
+            const id = Date.now();
+            servicos.push({ id, descricao: '', quantidade: 1, preco: 0 });
+            renderizarServicos();
+        }
+
+        function removerServico(id) {
+            servicos = servicos.filter(s => s.id !== id);
+            renderizarServicos();
+        }
+
+        function atualizarServico(id, campo, valor) {
+            const servico = servicos.find(s => s.id === id);
+            if (servico) {
+                if (campo === 'quantidade' || campo === 'preco') {
+                    servico[campo] = parseFloat(valor) || 0;
+                } else {
+                    servico[campo] = valor;
+                }
+                atualizarPrevia();
+                calcularTotal();
+            }
+        }
+
+        function renderizarServicos() {
+            const lista = document.getElementById('services-list');
+            if (servicos.length === 0) {
+                lista.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>';
+                return;
+            }
+
+            lista.innerHTML = servicos.map(s => `
+                <div class="service-item">
+                    <div class="service-field">
+                        <label>Descrição:</label>
+                        <input type="text" placeholder="Ex: Consultoria, Desenvolvimento, Aluguel..." value="${s.descricao}" onchange="atualizarServico(${s.id}, 'descricao', this.value)" oninput="atualizarServico(${s.id}, 'descricao', this.value)">
+                    </div>
+                    <div class="service-row">
+                        <div class="service-field">
+                            <label>Quantidade:</label>
+                            <input type="number" min="0" step="0.01" placeholder="1" value="${s.quantidade}" onchange="atualizarServico(${s.id}, 'quantidade', this.value)" oninput="atualizarServico(${s.id}, 'quantidade', this.value)">
+                        </div>
+                        <div class="service-field">
+                            <label>Preço UNIT:</label>
+                            <input type="number" min="0" step="0.01" placeholder="0.00" value="${s.preco}" onchange="atualizarServico(${s.id}, 'preco', this.value)" oninput="atualizarServico(${s.id}, 'preco', this.value)">
+                        </div>
+                        <div class="service-field">
+                            <button class="btn-remove-service" onclick="removerServico(${s.id})">✕ Remover</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function calcularTotal() {
+            const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
+            document.getElementById('total-amount').textContent = formatarMoeda(total);
+            return total;
+        }
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+        }
+
+        function atualizarPrevia() {
+            const total = calcularTotal();
+
+            const recebedorEnd = [
+                document.getElementById('recebedor-rua').value,
+                document.getElementById('recebedor-num').value,
+                document.getElementById('recebedor-comp').value,
+                document.getElementById('recebedor-cidade').value,
+                document.getElementById('recebedor-uf').value
+            ].filter(Boolean).join(', ');
+
+            const pagadorEnd = [
+                document.getElementById('pagador-rua').value,
+                document.getElementById('pagador-num').value,
+                document.getElementById('pagador-comp').value,
+                document.getElementById('pagador-cidade').value,
+                document.getElementById('pagador-uf').value
+            ].filter(Boolean).join(', ');
+
+            let html = `
+                <div class="preview-header">
+                    <div class="preview-title">RECIBO</div>
+                </div>
+
+                <div class="preview-section">
+                    <h3>RECEBEDOR</h3>
+                    <div class="preview-content">
+                        <div class="preview-row">
+                            <div class="preview-label">Nome:</div>
+                            <div class="preview-value">${document.getElementById('recebedor-nome').value || '—'}</div>
+                        </div>
+                        <div class="preview-row">
+                            <div class="preview-label">${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</div>
+                            <div class="preview-value">${document.getElementById('recebedor-doc').value || '—'}</div>
+                        </div>
+                        <div class="preview-row">
+                            <div class="preview-label">Tel:</div>
+                            <div class="preview-value">${document.getElementById('recebedor-tel').value || '—'}</div>
+                        </div>
+                        ${recebedorEnd ? `<div class="preview-row"><div class="preview-label">End:</div><div class="preview-value">${recebedorEnd}</div></div>` : ''}
+                    </div>
+                </div>
+
+                <div class="preview-section">
+                    <h3>PAGADOR</h3>
+                    <div class="preview-content">
+                        <div class="preview-row">
+                            <div class="preview-label">Nome:</div>
+                            <div class="preview-value">${document.getElementById('pagador-nome').value || '—'}</div>
+                        </div>
+                        ${document.getElementById('pagador-doc').value ? `
+                            <div class="preview-row">
+                                <div class="preview-label">${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</div>
+                                <div class="preview-value">${document.getElementById('pagador-doc').value}</div>
+                            </div>
+                        ` : ''}
+                        ${document.getElementById('pagador-tel').value ? `
+                            <div class="preview-row">
+                                <div class="preview-label">Tel:</div>
+                                <div class="preview-value">${document.getElementById('pagador-tel').value}</div>
+                            </div>
+                        ` : ''}
+                        ${pagadorEnd ? `<div class="preview-row"><div class="preview-label">End:</div><div class="preview-value">${pagadorEnd}</div></div>` : ''}
+                    </div>
+                </div>
+
+                ${servicos.length > 0 ? `
+                    <div class="preview-section">
+                        <h3>PRODUTOS/SERVIÇOS</h3>
+                        <table class="services-table">
+                            <thead>
+                                <tr>
+                                    <th>Descrição</th>
+                                    <th style="text-align: center; width: 50px;">Qtd</th>
+                                    <th style="text-align: right; width: 80px;">Preço Unit.</th>
+                                    <th style="text-align: right; width: 80px;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${servicos.map(s => `
+                                    <tr>
+                                        <td>${s.descricao}</td>
+                                        <td style="text-align: center;">${s.quantidade}</td>
+                                        <td style="text-align: right;">${formatarMoeda(s.preco)}</td>
+                                        <td style="text-align: right;">${formatarMoeda(s.quantidade * s.preco)}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr style="background: #f5f5f5;">
+                                    <td style="font-weight: bold;" colspan="3">TOTAL</td>
+                                    <td style="text-align: right; font-weight: bold;">${formatarMoeda(total)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('preview').innerHTML = html;
+        }
+
+        function validarFormulario() {
+            const campos = [
+                'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
+                'recebedor-rua', 'recebedor-num', 'recebedor-cidade', 'recebedor-uf'
+            ];
+
+            for (let campo of campos) {
+                if (!document.getElementById(campo).value.trim()) {
+                    alert(`Por favor, preencha o campo obrigatório: ${campo.replace('-', ' ')}`);
+                    return false;
+                }
+            }
+
+            if (!document.getElementById('periodo-inicio').value || !document.getElementById('periodo-fim').value) {
+                alert('Por favor, preencha a data/período da prestação de serviço');
+                return false;
+            }
+
+            if (servicos.length === 0) {
+                alert('Adicione pelo menos um produto ou serviço');
+                return false;
+            }
+
+            for (let s of servicos) {
+                if (!s.descricao.trim() || s.quantidade <= 0 || s.preco <= 0) {
+                    alert('Todos os produtos/serviços devem ter descrição, quantidade e preço preenchidos');
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function gerarPDF() {
+            if (!validarFormulario()) return;
+
+            const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
+            const recebedorEnd = [
+                document.getElementById('recebedor-rua').value,
+                document.getElementById('recebedor-num').value,
+                document.getElementById('recebedor-comp').value,
+                document.getElementById('recebedor-cidade').value,
+                document.getElementById('recebedor-uf').value
+            ].filter(Boolean).join(', ');
+
+            const pagadorEnd = [
+                document.getElementById('pagador-rua').value,
+                document.getElementById('pagador-num').value,
+                document.getElementById('pagador-comp').value,
+                document.getElementById('pagador-cidade').value,
+                document.getElementById('pagador-uf').value
+            ].filter(Boolean).join(', ');
+
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            
+            const periodoTipo = document.getElementById('periodo-tipo').value;
+            const periodoInicio = new Date(document.getElementById('periodo-inicio').value).toLocaleDateString('pt-BR');
+            const periodoFim = new Date(document.getElementById('periodo-fim').value).toLocaleDateString('pt-BR');
+            
+            let textoPeriodicidade = '';
+            switch(periodoTipo) {
+                case 'dia':
+                    textoPeriodicidade = `Período do ${periodoInicio} ao ${periodoFim} (em dias)`;
+                    break;
+                case 'mes':
+                    textoPeriodicidade = `Período do ${periodoInicio} ao ${periodoFim} (em meses)`;
+                    break;
+                case 'ano':
+                    textoPeriodicidade = `Período do ${periodoInicio} ao ${periodoFim} (em anos)`;
+                    break;
+            }
+
+            const html = `
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        * { margin: 0; padding: 0; }
+                        body { 
+                            font-family: 'Segoe UI', Arial, sans-serif; 
+                            color: #333; 
+                            line-height: 1.6;
+                            background: white;
+                        }
+                        .pdf-container { 
+                            width: 210mm; 
+                            height: 297mm; 
+                            margin: 0 auto; 
+                            padding: 20mm;
+                            background: white;
+                        }
+                        .header { 
+                            text-align: center; 
+                            border-bottom: 3px solid #333; 
+                            padding-bottom: 15mm; 
+                            margin-bottom: 20mm; 
+                        }
+                        .header h1 { 
+                            margin: 0; 
+                            font-size: 28px; 
+                            letter-spacing: 2px;
+                        }
+                        .header p { 
+                            margin: 5px 0 0 0; 
+                            font-size: 12px; 
+                            color: #666;
+                        }
+                        .section { 
+                            margin-bottom: 15mm; 
+                        }
+                        .section h2 { 
+                            background: #f5f5f5; 
+                            padding: 8px 12px; 
+                            margin: 0 0 10px 0; 
+                            font-size: 12px; 
+                            border-left: 4px solid #667eea;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                        }
+                        .info-table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            font-size: 12px; 
+                            margin-bottom: 10mm;
+                        }
+                        .info-table td { 
+                            padding: 6px 0; 
+                            border-bottom: 1px solid #ddd;
+                        }
+                        .info-table td:first-child { 
+                            width: 100px; 
+                            font-weight: bold;
+                        }
+                        .services-table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            font-size: 11px;
+                            margin-top: 10px;
+                        }
+                        .services-table th { 
+                            background: #f5f5f5; 
+                            padding: 8px; 
+                            text-align: left; 
+                            border-bottom: 2px solid #667eea; 
+                            font-weight: bold; 
+                            font-size: 11px;
+                        }
+                        .services-table td { 
+                            padding: 8px; 
+                            border-bottom: 1px solid #e0e0e0;
+                        }
+                        .services-table tr:last-child td { 
+                            border-top: 2px solid #667eea; 
+                            border-bottom: 2px solid #667eea; 
+                            font-weight: bold;
+                            background: #f9f9f9;
+                        }
+                        .text-right { text-align: right; }
+                        .text-center { text-align: center; }
+                        .signatures { 
+                            margin-top: 30mm; 
+                            display: grid; 
+                            grid-template-columns: 1fr 1fr; 
+                            gap: 30mm;
+                        }
+                        .signature-box { 
+                            text-align: center;
+                        }
+                        .signature-line { 
+                            border-top: 2px solid #333; 
+                            height: 30px;
+                            margin-bottom: 5px;
+                        }
+                        .signature-name { 
+                            font-weight: bold;
+                            font-size: 12px;
+                            margin-bottom: 3px;
+                        }
+                        .signature-label { 
+                            font-size: 10px; 
+                            color: #666;
+                        }
+                        .date-section { 
+                            margin-top: 20mm; 
+                            text-align: center; 
+                            font-size: 11px;
+                            border-top: 1px solid #ddd;
+                            padding-top: 10px;
+                        }
+                        .period-box {
+                            background: #f5f5f5;
+                            padding: 10px;
+                            border-radius: 4px;
+                            margin-bottom: 10mm;
+                            font-size: 12px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="pdf-container">
+                        <div class="header">
+                            <h1>RECIBO</h1>
+                            <p>Referente aos serviços prestados</p>
+                        </div>
+
+                    <div class="section">
+                        <h2>RECEBEDOR</h2>
+                        <table>
+                            <tr>
+                                <td>Nome/Razão Social:</td>
+                                <td>${document.getElementById('recebedor-nome').value}</td>
+                            </tr>
+                            <tr>
+                                <td>${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
+                                <td>${document.getElementById('recebedor-doc').value}</td>
+                            </tr>
+                            <tr>
+                                <td>Telefone:</td>
+                                <td>${document.getElementById('recebedor-tel').value}</td>
+                            </tr>
+                            <tr>
+                                <td>Endereço:</td>
+                                <td>${recebedorEnd}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="section">
+                        <h2>PAGADOR</h2>
+                        <table>
+                            <tr>
+                                <td>Nome/Razão Social:</td>
+                                <td>${document.getElementById('pagador-nome').value || '—'}</td>
+                            </tr>
+                            ${document.getElementById('pagador-doc').value ? `
+                                <tr>
+                                    <td>${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
+                                    <td>${document.getElementById('pagador-doc').value}</td>
+                                </tr>
+                            ` : ''}
+                            ${document.getElementById('pagador-tel').value ? `
+                                <tr>
+                                    <td>Telefone:</td>
+                                    <td>${document.getElementById('pagador-tel').value}</td>
+                                </tr>
+                            ` : ''}
+                            ${pagadorEnd ? `
+                                <tr>
+                                    <td>Endereço:</td>
+                                    <td>${pagadorEnd}</td>
+                                </tr>
+                            ` : ''}
+                        </table>
+                    </div>
+
+                    <div class="section">
+                        <h2>DESCRIÇÃO DOS SERVIÇOS/PRODUTOS</h2>
+                        <table class="services-table">
+                            <thead>
+                                <tr>
+                                    <th>Descrição</th>
+                                    <th style="width: 60px; text-align: center;">Quantidade</th>
+                                    <th style="width: 100px; text-align: right;">Preço Unitário</th>
+                                    <th style="width: 100px; text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${servicos.map(s => `
+                                    <tr>
+                                        <td>${s.descricao}</td>
+                                        <td style="text-align: center;">${s.quantidade}</td>
+                                        <td class="text-right">${formatarMoeda(s.preco)}</td>
+                                        <td class="text-right">${formatarMoeda(s.quantidade * s.preco)}</td>
+                                    </tr>
+                                `).join('')}
+                                <tr>
+                                    <td colspan="3" style="text-align: right; padding-right: 10px;">TOTAL GERAL</td>
+                                    <td class="text-right">${formatarMoeda(total)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                        <div class="signature-box">
+                            <div class="line"></div>
+                            <strong>${document.getElementById('recebedor-nome').value}</strong>
+                            <p style="margin: 3px 0; font-size: 12px;">${recebedorType === 'pf' ? 'Assinatura - Recebedor' : 'Assinatura - Recebedor'}</p>
+                        </div>
+                        <div class="signature-box">
+                            <div class="line"></div>
+                            <strong>${document.getElementById('pagador-nome').value || 'PAGADOR'}</strong>
+                            <p style="margin: 3px 0; font-size: 12px;">Assinatura - Pagador</p>
+                        </div>
+                    </div>
+
+                    <div class="date-section">
+                        <p>Emitido em: <strong>${hoje}</strong></p>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const opt = {
+                margin: 10,
+                filename: 'recibo.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(html).save();
+        }
+
+        // Inicializar
+        renderizarServicos();
+        atualizarPrevia();
+    </script>
+</body>
+</html>
