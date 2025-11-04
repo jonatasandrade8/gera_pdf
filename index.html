@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de Recibos</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf-autotable.umd.js"></script>
+
     <style>
+        /* Seu CSS existente permanece exatamente o mesmo... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -60,8 +64,6 @@
         .section-title { color: #667eea; margin-top: 25px; margin-bottom: 15px; font-size: 16px; font-weight: 600; }
         .error { color: #ff6b6b; font-size: 12px; margin-top: 5px; }
         .success { color: #48bb78; font-size: 12px; margin-top: 5px; }
-
-        /* Estilos para o CRUD */
         .saved-receipts-list { margin-top: 20px; max-height: 200px; overflow-y: auto; background: #f9f9f9; border-radius: 6px; padding: 10px; }
         .saved-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 8px; }
         .saved-item-name { font-weight: 500; }
@@ -71,6 +73,7 @@
     </style>
 </head>
 <body>
+    
     <div class="container">
         <div class="header">
             <h1>📄 Gerador de Recibos</h1>
@@ -256,7 +259,7 @@
         let recibosSalvos = [];
 
         // --- Funções de Gerenciamento de Tipo (PF/PJ) ---
-
+        // (Sem alterações)
         function setRecebedorType(type) {
             recebedorType = type;
             document.getElementById('btn-recebedor-pf').classList.toggle('active', type === 'pf');
@@ -304,7 +307,7 @@
         }
 
         // --- Funções de Busca (API) ---
-
+        // (Sem alterações)
         function buscarCEP(tipo) {
             const cepInput = document.getElementById(tipo + '-cep');
             const cep = cepInput.value.replace(/\D/g, '');
@@ -330,7 +333,6 @@
                 });
         }
 
-        // NOVA FUNÇÃO: Buscar CNPJ
         function buscarCNPJ(tipo) {
             const currentType = (tipo === 'recebedor') ? recebedorType : pagadorType;
             if (currentType !== 'pj') return; // Só busca se for PJ
@@ -339,7 +341,6 @@
             const cnpj = cnpjInput.value.replace(/\D/g, '');
             if (cnpj.length !== 14) return;
 
-            // Usando a API pública brasilapi.com.br (gratuita e sem CORS)
             fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
                 .then(res => {
                     if (!res.ok) throw new Error('CNPJ não encontrado ou API indisponível');
@@ -365,18 +366,18 @@
 
 
         // --- Funções de Gerenciamento de Serviços (Item do Recibo) ---
-
+        // (Sem alterações)
         function adicionarServico() {
             const id = Date.now();
             servicos.push({ id, descricao: '', quantidade: 1, preco: 0 });
             renderizarServicos();
-            atualizarPrevia(); // Garante que a prévia atualize mesmo com item vazio
+            atualizarPrevia(); 
         }
 
         function removerServico(id) {
             servicos = servicos.filter(s => s.id !== id);
             renderizarServicos();
-            atualizarPrevia(); // Atualiza prévia e total
+            atualizarPrevia(); 
         }
 
         function atualizarServico(id, campo, valor) {
@@ -387,7 +388,7 @@
                 } else {
                     servico[campo] = valor;
                 }
-                atualizarPrevia(); // Atualiza prévia e total
+                atualizarPrevia(); 
             }
         }
 
@@ -395,7 +396,7 @@
             const lista = document.getElementById('services-list');
             if (servicos.length === 0) {
                 lista.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>';
-                calcularTotal(); // Recalcula para zerar o total se o último item for removido
+                calcularTotal(); 
                 return;
             }
 
@@ -422,11 +423,11 @@
                 </div>
             `).join('');
             
-            calcularTotal(); // Atualiza o total sempre que renderiza
+            calcularTotal(); 
         }
 
         // --- Funções de Cálculo e Formatação ---
-
+        // (Sem alterações)
         function calcularTotal() {
             const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
             document.getElementById('total-amount').textContent = formatarMoeda(total);
@@ -438,7 +439,7 @@
         }
 
         // --- Funções de Atualização da UI (Preview) ---
-
+        // (Sem alterações)
         function atualizarPrevia() {
             const total = calcularTotal();
 
@@ -539,10 +540,9 @@
             document.getElementById('preview').innerHTML = html;
         }
 
-        // --- Funções de Validação e Geração de PDF ---
-
+        // --- Funções de Validação ---
+        // (Sem alterações)
         function validarFormulario() {
-            // Campos obrigatórios do Recebedor
             const camposRecebedor = [
                 'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
                 'recebedor-rua', 'recebedor-num', 'recebedor-cidade', 'recebedor-uf'
@@ -557,7 +557,6 @@
                 }
             }
             
-            // Campos obrigatórios do Período
             const camposPeriodo = ['periodo-inicio', 'periodo-fim'];
              for (let campo of camposPeriodo) {
                 const el = document.getElementById(campo);
@@ -568,7 +567,6 @@
                 }
             }
             
-            // Validação de Data
             const inicio = new Date(document.getElementById('periodo-inicio').value);
             const fim = new Date(document.getElementById('periodo-fim').value);
             if (fim < inicio) {
@@ -576,7 +574,6 @@
                 return false;
             }
 
-            // Validação dos Serviços
             if (servicos.length === 0) {
                 alert('Adicione pelo menos um produto ou serviço.');
                 return false;
@@ -593,307 +590,232 @@
             return true;
         }
 
-        // FUNÇÃO CORRIGIDA: Gerar PDF
+        // --- FUNÇÃO DE GERAR PDF TOTALMENTE REESCRITA ---
+        
         function gerarPDF() {
             if (!validarFormulario()) return;
 
-            const total = calcularTotal(); // Pega o valor já formatado
-            const totalBruto = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
+            // 1. Inicializar o jsPDF
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.autoTable = window.jspdf.autoTable;
+
+            // 2. Definir variáveis e constantes
+            const margin = 15;
+            const docWidth = doc.internal.pageSize.getWidth();
+            const docHeight = doc.internal.pageSize.getHeight();
+            let y = 0; // Posição vertical atual
+
+            const recebedorNome = document.getElementById('recebedor-nome').value;
+            const pagadorNome = document.getElementById('pagador-nome').value || 'PAGADOR';
 
             const recebedorEnd = [
                 document.getElementById('recebedor-rua').value,
-                document.getElementById('recebedor-num').value,
-                document.getElementById('recebedor-comp').value,
-            ].filter(Boolean).join(', ') + (document.getElementById('recebedor-comp').value ? ' - ' : '') + 
-            [
+                document.getElementById('recebedor-num').value
+            ].filter(Boolean).join(', ') + (document.getElementById('recebedor-comp').value ? ` - ${document.getElementById('recebedor-comp').value}` : '');
+            
+            const recebedorCidade = [
                 document.getElementById('recebedor-cidade').value,
                 document.getElementById('recebedor-uf').value
-            ].filter(Boolean).join(' / ');
-
+            ].filter(Boolean).join('/');
+            
             const pagadorEnd = [
                 document.getElementById('pagador-rua').value,
-                document.getElementById('pagador-num').value,
-                document.getElementById('pagador-comp').value,
-            ].filter(Boolean).join(', ') + (document.getElementById('pagador-comp').value ? ' - ' : '') + 
-            [
+                document.getElementById('pagador-num').value
+            ].filter(Boolean).join(', ') + (document.getElementById('pagador-comp').value ? ` - ${document.getElementById('pagador-comp').value}` : '');
+            
+            const pagadorCidade = [
                 document.getElementById('pagador-cidade').value,
                 document.getElementById('pagador-uf').value
-            ].filter(Boolean).join(' / ');
+            ].filter(Boolean).join('/');
 
-            const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-            
+            // 3. Título
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text("RECIBO", docWidth / 2, margin + 10, { align: "center" });
+            y = margin + 25;
+
+            // 4. Seção Recebedor
+            drawSectionHeader(doc, "RECEBEDOR (PRESTADOR)", y);
+            y += 10;
+            y = drawInfoBlock(doc, y, [
+                [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, recebedorNome],
+                [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('recebedor-doc').value],
+                ["Telefone:", document.getElementById('recebedor-tel').value],
+                ["Endereço:", recebedorEnd],
+                ["Cidade/UF:", recebedorCidade],
+                ["CEP:", document.getElementById('recebedor-cep').value]
+            ]);
+            y += 5; // Espaçamento extra
+
+            // 5. Seção Pagador
+            drawSectionHeader(doc, "PAGADOR (CLIENTE)", y);
+            y += 10;
+            y = drawInfoBlock(doc, y, [
+                [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, pagadorNome],
+                [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('pagador-doc').value],
+                ["Telefone:", document.getElementById('pagador-tel').value],
+                ["Endereço:", pagadorEnd],
+                ["Cidade/UF:", pagadorCidade],
+                ["CEP:", document.getElementById('pagador-cep').value]
+            ]);
+            y += 5;
+
+            // 6. Seção Período
             const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-            
-            // Formata datas corretamente (o input 'date' usa fuso UTC, precisamos corrigir)
             const dataInicioInput = document.getElementById('periodo-inicio').value;
             const dataFimInput = document.getElementById('periodo-fim').value;
-            
             const periodoInicio = new Date(dataInicioInput + 'T03:00:00').toLocaleDateString('pt-BR');
             const periodoFim = new Date(dataFimInput + 'T03:00:00').toLocaleDateString('pt-BR');
-            
             let textoPeriodicidade = `${periodoTipo} de ${periodoInicio} a ${periodoFim}`;
 
+            drawSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y);
+            y += 10;
+            y = drawInfoBlock(doc, y, [ ["Referente a:", textoPeriodicidade] ]);
+            y += 5;
 
-            // CORREÇÃO: O HTML do PDF estava com estrutura inválida.
-            const html = `
-                <!DOCTYPE html>
-                <html lang="pt-BR">
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            color: #333; 
-                            line-height: 1.5;
-                        }
-                        .pdf-container { 
-                            width: 100%; 
-                            max-width: 800px;
-                            margin: 0 auto; 
-                            padding: 40px;
-                        }
-                        .header { 
-                            text-align: center; 
-                            border-bottom: 2px solid #333; 
-                            padding-bottom: 20px; 
-                            margin-bottom: 30px; 
-                        }
-                        .header h1 { 
-                            margin: 0; 
-                            font-size: 28px; 
-                            letter-spacing: 1px;
-                        }
-                        .section { 
-                            margin-bottom: 25px; 
-                        }
-                        .section h2 { 
-                            background: #f4f4f4; 
-                            padding: 8px 12px; 
-                            margin-bottom: 15px; 
-                            font-size: 14px; 
-                            border-left: 4px solid #667eea;
-                            font-weight: bold;
-                            text-transform: uppercase;
-                        }
-                        .info-table { 
-                            width: 100%; 
-                            border-collapse: collapse; 
-                            font-size: 13px; 
-                        }
-                        .info-table td { 
-                            padding: 6px 0; 
-                            vertical-align: top;
-                        }
-                        .info-table td:first-child { 
-                            width: 130px; 
-                            font-weight: bold;
-                            color: #555;
-                        }
-                        .services-table { 
-                            width: 100%; 
-                            border-collapse: collapse; 
-                            font-size: 12px;
-                            margin-top: 10px;
-                        }
-                        .services-table th { 
-                            background: #f4f4f4; 
-                            padding: 10px; 
-                            text-align: left; 
-                            border-bottom: 2px solid #667eea; 
-                            font-weight: bold; 
-                        }
-                        .services-table td { 
-                            padding: 10px; 
-                            border-bottom: 1px solid #ddd;
-                        }
-                        .services-table .total-row td { 
-                            border-top: 2px solid #667eea; 
-                            border-bottom: 2px solid #667eea; 
-                            font-weight: bold;
-                            font-size: 14px;
-                            background: #f9f9f9;
-                        }
-                        .text-right { text-align: right; }
-                        .text-center { text-align: center; }
-                        
-                        .signatures { 
-                            margin-top: 50px; 
-                            display: grid; 
-                            grid-template-columns: 1fr 1fr; 
-                            gap: 50px;
-                        }
-                        .signature-box { 
-                            text-align: center;
-                            padding-top: 20px;
-                        }
-                        .signature-line { 
-                            border-top: 1px solid #333; 
-                            margin-bottom: 8px;
-                        }
-                        .signature-name { 
-                            font-weight: bold;
-                            font-size: 13px;
-                            margin-bottom: 3px;
-                        }
-                        .signature-label { 
-                            font-size: 11px; 
-                            color: #666;
-                        }
-                        .date-section { 
-                            margin-top: 40px; 
-                            text-align: center; 
-                            font-size: 12px;
-                            color: #555;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="pdf-container">
-                        <div class="header">
-                            <h1>RECIBO</h1>
-                        </div>
+            // 7. Seção Serviços (Tabela)
+            drawSectionHeader(doc, "DESCRIÇÃO DOS SERVIÇOS/PRODUTOS", y);
+            y += 10;
 
-                        <div class="section">
-                            <h2>RECEBEDOR (PRESTADOR)</h2>
-                            <table class="info-table">
-                                <tr>
-                                    <td>Nome/Razão:</td>
-                                    <td>${document.getElementById('recebedor-nome').value}</td>
-                                </tr>
-                                <tr>
-                                    <td>${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
-                                    <td>${document.getElementById('recebedor-doc').value}</td>
-                                </tr>
-                                <tr>
-                                    <td>Telefone:</td>
-                                    <td>${document.getElementById('recebedor-tel').value}</td>
-                                </tr>
-                                <tr>
-                                    <td>Endereço:</td>
-                                    <td>${recebedorEnd}</td>
-                                </tr>
-                            </table>
-                        </div>
+            const tableHead = [
+                { title: 'Descrição', dataKey: 'desc' },
+                { title: 'Qtd.', dataKey: 'qtd' },
+                { title: 'Preço Unit.', dataKey: 'unit' },
+                { title: 'Total', dataKey: 'total' }
+            ];
 
-                        <div class="section">
-                            <h2>PAGADOR (CLIENTE)</h2>
-                            <table class="info-table">
-                                <tr>
-                                    <td>Nome/Razão:</td>
-                                    <td>${document.getElementById('pagador-nome').value || '—'}</td>
-                                </tr>
-                                ${document.getElementById('pagador-doc').value ? `
-                                    <tr>
-                                        <td>${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</td>
-                                        <td>${document.getElementById('pagador-doc').value}</td>
-                                    </tr>
-                                ` : ''}
-                                ${document.getElementById('pagador-tel').value ? `
-                                    <tr>
-                                        <td>Telefone:</td>
-                                        <td>${document.getElementById('pagador-tel').value}</td>
-                                    </tr>
-                                ` : ''}
-                                ${pagadorEnd ? `
-                                    <tr>
-                                        <td>Endereço:</td>
-                                        <td>${pagadorEnd}</td>
-                                    </tr>
-                                ` : ''}
-                            </table>
-                        </div>
+            const tableBody = servicos.map(s => ({
+                desc: s.descricao,
+                qtd: s.quantidade,
+                unit: formatarMoeda(s.preco),
+                total: formatarMoeda(s.quantidade * s.preco)
+            }));
 
-                        <div class="section">
-                            <h2>DESCRIÇÃO DOS SERVIÇOS/PRODUTOS</h2>
-                            <table class="services-table">
-                                <thead>
-                                    <tr>
-                                        <th>Descrição</th>
-                                        <th style="width: 60px;" class="text-center">Qtd.</th>
-                                        <th style="width: 100px;" class="text-right">Preço Unit.</th>
-                                        <th style="width: 100px;" class="text-right">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${servicos.map(s => `
-                                        <tr>
-                                            <td>${s.descricao}</td>
-                                            <td class="text-center">${s.quantidade}</td>
-                                            <td class="text-right">${formatarMoeda(s.preco)}</td>
-                                            <td class="text-right">${formatarMoeda(s.quantidade * s.preco)}</td>
-                                        </tr>
-                                    `).join('')}
-                                    <tr class="total-row">
-                                        <td colspan="3" class="text-right">TOTAL GERAL</td>
-                                        <td class="text-right">${formatarMoeda(totalBruto)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="section">
-                            <h2>PERÍODO DE PRESTAÇÃO</h2>
-                            <table class="info-table">
-                                <tr>
-                                    <td style="width: 130px;">Referente a:</td>
-                                    <td>${textoPeriodicidade}</td>
-                                </tr>
-                            </table>
-                        </div>
-
-                        <div class="signatures">
-                            <div class="signature-box">
-                                <div class="signature-line"></div>
-                                <div class="signature-name">${document.getElementById('recebedor-nome').value}</div>
-                                <div class="signature-label">Assinatura do Recebedor</div>
-                            </div>
-                            <div class="signature-box">
-                                <div class="signature-line"></div>
-                                <div class="signature-name">${document.getElementById('pagador-nome').value || 'PAGADOR'}</div>
-                                <div class="signature-label">Assinatura do Pagador</div>
-                            </div>
-                        </div>
-
-                        <div class="date-section">
-                            Emitido em: ${hoje}
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `;
-
-            const opt = {
-                margin: [10, 10, 10, 10], // top, left, bottom, right
-                filename: `recibo_${document.getElementById('recebedor-nome').value.replace(/ /g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            // html2pdf().set(opt).from(html).save();
-            // CORREÇÃO: Usar o elemento previne bugs de renderização de fontes e estilos
-            const element = document.createElement('div');
-            element.innerHTML = html;
-            // É preciso adicionar ao DOM temporariamente para renderizar
-            document.body.appendChild(element); 
+            const totalBruto = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
             
-            html2pdf().from(element.firstElementChild).set(opt).save().then(() => {
-                 document.body.removeChild(element); // Limpa o elemento do DOM
+            doc.autoTable({
+                startY: y,
+                head: [tableHead],
+                body: tableBody,
+                theme: 'striped',
+                headStyles: {
+                    fillColor: [245, 245, 245], // Cinza claro
+                    textColor: [51, 51, 51], // Cinza escuro
+                    fontStyle: 'bold',
+                    lineColor: [224, 224, 224]
+                },
+                styles: {
+                    font: "helvetica",
+                    fontSize: 10,
+                    cellPadding: 3
+                },
+                columnStyles: {
+                    qtd: { halign: 'center' },
+                    unit: { halign: 'right' },
+                    total: { halign: 'right' }
+                },
+                // Adiciona a linha de TOTAL
+                didDrawPage: (data) => {
+                    const tableBottom = data.cursor.y;
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFillColor(245, 245, 245);
+                    doc.rect(data.settings.margin.left, tableBottom, data.table.width, 10, 'F');
+                    
+                    doc.text("TOTAL GERAL", data.settings.margin.left + (data.table.columns[0].width + data.table.columns[1].width), tableBottom + 7, { halign: 'right' });
+                    doc.text(formatarMoeda(totalBruto), data.table.width + data.settings.margin.left - data.table.columns[3].width, tableBottom + 7, { halign: 'right', width: data.table.columns[3].width });
+                
+                    // Seta o Y para depois da tabela + total
+                    y = tableBottom + 20; 
+                }
             });
+            
+            // Pega o Y final da tabela (jsPDF-AutoTable não retorna isso diretamente)
+            y = doc.autoTable.previous.finalY + 15;
+
+
+            // 8. Seção Assinaturas
+            // Se o conteúdo for muito grande, pula para uma nova página
+            if (y > docHeight - 60) {
+                doc.addPage();
+                y = margin + 10;
+            }
+
+            const signatureY = docHeight - 50; // Posição fixa no fim da página
+            const sigWidth = 80; // Largura da linha de assinatura
+            const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
+            const sigRightX = margin + (docWidth * 3 / 4) - (docWidth / 4) - (sigWidth / 2);
+
+            doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth });
+            doc.setFontSize(9);
+            doc.text("Assinatura do Recebedor", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" });
+
+            doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth });
+            doc.setFontSize(9);
+            doc.text("Assinatura do Pagador", sigRightX + sigWidth / 2, signatureY + 10, { align: "center" });
+
+
+            // 9. Data de Emissão (Rodapé)
+            const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100); // Cinza
+            doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - margin + 5, { align: "center" });
+
+            // 10. Salvar
+            doc.save(`recibo_${recebedorNome.replace(/ /g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
         }
 
-        // --- NOVAS FUNÇÕES: CRUD (Salvar, Carregar, Remover) ---
+        // --- Funções Auxiliares para o PDF ---
 
-        // Helper para obter todos os dados do formulário
+        // Desenha um cabeçalho de seção (Ex: "RECEBEDOR")
+        function drawSectionHeader(doc, text, y) {
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.setFillColor(245, 245, 245); // Cinza claro
+            doc.setTextColor(51, 51, 51); // Cinza escuro
+            doc.setDrawColor(224, 224, 224); // Borda
+            doc.rect(14, y, doc.internal.pageSize.getWidth() - 28, 8, 'FD'); // Retângulo preenchido e com borda
+            doc.text(text.toUpperCase(), 18, y + 6);
+        }
+
+        // Desenha um bloco de informações (Label: Valor)
+        function drawInfoBlock(doc, y, data) {
+            const labelWidth = 40;
+            const margin = 15;
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 51, 51);
+
+            data.forEach(([label, value]) => {
+                if (value && value.trim() !== "") { // Só desenha se tiver valor
+                    doc.setFont("helvetica", "bold");
+                    doc.text(label, margin, y);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(value, margin + labelWidth, y, { maxWidth: doc.internal.pageSize.getWidth() - margin * 2 - labelWidth });
+                    y += 6;
+                }
+            });
+            return y;
+        }
+
+
+        // --- FUNÇÕES CRUD (Salvar, Carregar, Remover) ---
+        // (Sem alterações)
         function getFormData() {
             const data = {
                 recebedorType,
                 pagadorType,
-                servicos: [...servicos] // Clona o array de serviços
+                servicos: [...servicos] 
             };
             
-            // Pega todos os inputs e selects
             const fields = document.querySelectorAll('.form-section input, .form-section select');
             fields.forEach(field => {
                 if (field.id) {
@@ -903,13 +825,10 @@
             return data;
         }
 
-        // Helper para popular o formulário com dados salvos
         function populateForm(data) {
-            // Seta os tipos (PF/PJ)
             setRecebedorType(data.recebedorType || 'pf');
             setPagadorType(data.pagadorType || 'pf');
 
-            // Popula todos os inputs e selects
             const fields = document.querySelectorAll('.form-section input, .form-section select');
             fields.forEach(field => {
                 if (field.id && data[field.id] !== undefined) {
@@ -917,10 +836,8 @@
                 }
             });
 
-            // Popula os serviços
             servicos = data.servicos ? [...data.servicos] : [];
             
-            // Atualiza a UI
             renderizarServicos();
             atualizarPrevia();
         }
@@ -936,13 +853,12 @@
             data.id = Date.now();
             data.nome = nome.trim();
 
-            // Adiciona ou atualiza se já existir um com mesmo nome
             const existingIndex = recibosSalvos.findIndex(r => r.nome.toLowerCase() === data.nome.toLowerCase());
             if (existingIndex > -1) {
                 if (!confirm('Já existe um recibo com esse nome. Deseja sobrescrevê-lo?')) {
                     return;
                 }
-                data.id = recibosSalvos[existingIndex].id; // Mantém o ID original
+                data.id = recibosSalvos[existingIndex].id; 
                 recibosSalvos[existingIndex] = data;
             } else {
                  recibosSalvos.push(data);
@@ -1001,7 +917,6 @@
             atualizarPrevia();
         }
 
-        // Inicializar a aplicação
         init();
         
     </script>
