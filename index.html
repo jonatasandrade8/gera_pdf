@@ -257,6 +257,7 @@
         let pagadorType = 'pf';
         let recibosSalvos = [];
 
+        // --- Funções de Gerenciamento de Tipo (PF/PJ) ---
         function setRecebedorType(type) {
             recebedorType = type;
             document.getElementById('btn-recebedor-pf').classList.toggle('active', type === 'pf');
@@ -303,6 +304,7 @@
             atualizarPrevia();
         }
 
+        // --- Funções de Busca (API) ---
         function buscarCEP(tipo) {
             const cepInput = document.getElementById(tipo + '-cep');
             const cep = cepInput.value.replace(/\D/g, '');
@@ -350,6 +352,7 @@
                     document.getElementById(tipo + '-cidade').value = data.municipio || '';
                     document.getElementById(tipo + '-uf').value = data.uf || '';
                     document.getElementById(tipo + '-tel').value = data.ddd_telefone_1 || '';
+                    
                     atualizarPrevia();
                 })
                 .catch(err => {
@@ -358,6 +361,7 @@
                 });
         }
 
+        // --- Funções de Gerenciamento de Serviços (Item do Recibo) ---
         function adicionarServico() {
             const id = Date.now();
             servicos.push({ id, descricao: '', quantidade: 1, preco: 0 });
@@ -417,6 +421,7 @@
             calcularTotal(); 
         }
 
+        // --- Funções de Cálculo e Formatação ---
         function calcularTotal() {
             const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
             document.getElementById('total-amount').textContent = formatarMoeda(total);
@@ -427,6 +432,7 @@
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
         }
 
+        // --- Funções de Atualização da UI (Preview) ---
         function atualizarPrevia() {
             const total = calcularTotal();
 
@@ -527,6 +533,7 @@
             document.getElementById('preview').innerHTML = html;
         }
 
+        // --- Funções de Validação ---
         function validarFormulario() {
             const camposRecebedor = [
                 'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
@@ -575,22 +582,27 @@
             return true;
         }
 
+        // --- FUNÇÃO DE GERAR PDF CORRIGIDA E MELHORADA ---
         function gerarPDF() {
             if (!validarFormulario()) return;
 
             try {
+                // Inicializar o jsPDF
                 const doc = new jspdf.jsPDF();
                 
-                const margin = 10;
+                // Definir variáveis e constantes
+                const margin = 20;
                 const docWidth = doc.internal.pageSize.getWidth();
                 const docHeight = doc.internal.pageSize.getHeight();
                 let y = margin;
 
-                const primaryColor = [102, 126, 234];
-                const secondaryColor = [118, 75, 162];
+                // Cores para o documento
+                const primaryColor = [102, 126, 234]; // Azul
+                const secondaryColor = [118, 75, 162]; // Roxo
                 const lightGray = [245, 245, 245];
                 const darkGray = [51, 51, 51];
 
+                // Dados do formulário
                 const recebedorNome = document.getElementById('recebedor-nome').value;
                 const pagadorNome = document.getElementById('pagador-nome').value || 'PAGADOR';
 
@@ -614,57 +626,46 @@
                     document.getElementById('pagador-uf').value
                 ].filter(Boolean).join('/');
 
-                // Cabeçalho
+                // Cabeçalho com gradiente
                 doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.rect(0, 0, docWidth, 20, 'F');
+                doc.rect(0, 0, docWidth, 40, 'F');
                 
                 doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
+                doc.setFontSize(24);
                 doc.setFont("helvetica", "bold");
-                doc.text("RECIBO", docWidth / 2, 13, { align: "center" });
+                doc.text("RECIBO", docWidth / 2, 25, { align: "center" });
                 
-                y = 25;
+                // Linha decorativa
+                doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+                doc.rect(0, 40, docWidth, 4, 'F');
+                
+                y = 60;
 
                 // Seção Recebedor
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.rect(margin, y, docWidth - (margin * 2), 5, 'F');
-                doc.text("RECEBEDOR", margin + 1, y + 3.5);
-                y += 6;
-
-                doc.setFontSize(7.5);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                doc.text(`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}: ${recebedorNome}`, margin + 1, y);
-                y += 3;
-                doc.text(`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}: ${document.getElementById('recebedor-doc').value}`, margin + 1, y);
-                y += 3;
-                doc.text(`Telefone: ${document.getElementById('recebedor-tel').value}`, margin + 1, y);
-                y += 3;
-                doc.text(`Endereço: ${recebedorEnd}, ${recebedorCidade}`, margin + 1, y);
-                y += 4;
+                drawSectionHeader(doc, "RECEBEDOR", y, primaryColor);
+                y += 12;
+                y = drawInfoBlock(doc, y, [
+                    [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, recebedorNome],
+                    [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('recebedor-doc').value],
+                    ["Telefone:", document.getElementById('recebedor-tel').value],
+                    ["Endereço:", recebedorEnd],
+                    ["Cidade/UF:", recebedorCidade],
+                    ["CEP:", document.getElementById('recebedor-cep').value]
+                ]);
+                y += 10;
 
                 // Seção Pagador
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.rect(margin, y, docWidth - (margin * 2), 5, 'F');
-                doc.text("PAGADOR", margin + 1, y + 3.5);
-                y += 6;
-
-                doc.setFontSize(7.5);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                doc.text(`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}: ${pagadorNome}`, margin + 1, y);
-                y += 3;
-                if (document.getElementById('pagador-doc').value) {
-                    doc.text(`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}: ${document.getElementById('pagador-doc').value}`, margin + 1, y);
-                    y += 3;
-                }
-                y += 3;
+                drawSectionHeader(doc, "PAGADOR", y, primaryColor);
+                y += 12;
+                y = drawInfoBlock(doc, y, [
+                    [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, pagadorNome],
+                    [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('pagador-doc').value],
+                    ["Telefone:", document.getElementById('pagador-tel').value],
+                    ["Endereço:", pagadorEnd],
+                    ["Cidade/UF:", pagadorCidade],
+                    ["CEP:", document.getElementById('pagador-cep').value]
+                ]);
+                y += 10;
 
                 // Seção Período
                 const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
@@ -672,77 +673,126 @@
                 const dataFimInput = document.getElementById('periodo-fim').value;
                 const periodoInicio = new Date(dataInicioInput + 'T03:00:00').toLocaleDateString('pt-BR');
                 const periodoFim = new Date(dataFimInput + 'T03:00:00').toLocaleDateString('pt-BR');
+                let textoPeriodicidade = `${periodoTipo} de ${periodoInicio} a ${periodoFim}`;
 
-                doc.setFontSize(8);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(255, 255, 255);
-                doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.rect(margin, y, docWidth - (margin * 2), 5, 'F');
-                doc.text("PERÍODO", margin + 1, y + 3.5);
-                y += 6;
+                drawSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y, primaryColor);
+                y += 12;
+                y = drawInfoBlock(doc, y, [ ["Referente a:", textoPeriodicidade] ]);
+                y += 15;
 
-                doc.setFontSize(7.5);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                doc.text(`${periodoTipo} de ${periodoInicio} a ${periodoFim}`, margin + 1, y);
-                y += 5;
+                // Seção Serviços
+                if (servicos.length > 0) {
+                    drawSectionHeader(doc, "DESCRIÇÃO DOS SERVIÇOS/PRODUTOS", y, primaryColor);
+                    y += 12;
 
-                // Tabela de Serviços
-                const tableData = [];
-                let totalGeral = 0;
+                    // Cabeçalho da tabela
+                    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                    doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
+                    
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+                    
+                    doc.text("Descrição", margin + 2, y + 7);
+                    doc.text("Qtd", docWidth - 120, y + 7, { align: "center" });
+                    doc.text("Preço Unit.", docWidth - 70, y + 7, { align: "right" });
+                    doc.text("Total", docWidth - margin - 2, y + 7, { align: "right" });
+                    
+                    y += 15;
 
-                servicos.forEach(s => {
-                    const totalItem = s.quantidade * s.preco;
-                    totalGeral += totalItem;
-                    tableData.push([
-                        s.descricao,
-                        s.quantidade.toFixed(2),
-                        formatarMoeda(s.preco),
-                        formatarMoeda(totalItem)
-                    ]);
-                });
+                    // Itens da tabela
+                    doc.setFont("helvetica", "normal");
+                    let totalGeral = 0;
 
-                tableData.push(['TOTAL', '', '', formatarMoeda(totalGeral)]);
+                    servicos.forEach(servico => {
+                        const totalItem = servico.quantidade * servico.preco;
+                        totalGeral += totalItem;
 
-                doc.autoTable({
-                    head: [['Descrição', 'Qtd', 'Preço Unit.', 'Total']],
-                    body: tableData,
-                    startY: y,
-                    margin: margin,
-                    pageBreak: 'avoid',
-                    styles: { fontSize: 7.5, cellPadding: 2 },
-                    headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
-                    bodyStyles: { textColor: darkGray },
-                    footStyles: { fontStyle: 'bold', fillColor: lightGray },
-                    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
-                });
+                        // Quebra de linha se o texto for muito longo
+                        const descricaoLines = doc.splitTextToSize(servico.descricao || 'N/D', 80);
+                        
+                        // Verifica se precisa de nova página
+                        if (y + (descricaoLines.length * 5) + 10 > docHeight - 50) {
+                            doc.addPage();
+                            y = margin;
+                        }
 
-                y = doc.lastAutoTable.finalY + 8;
+                        // Descrição (com quebra de linha)
+                        doc.text(descricaoLines, margin + 2, y + 4);
+                        
+                        // Demais colunas
+                        doc.text(servico.quantidade.toString(), docWidth - 120, y + 4, { align: "center" });
+                        doc.text(formatarMoeda(servico.preco), docWidth - 70, y + 4, { align: "right" });
+                        doc.text(formatarMoeda(totalItem), docWidth - margin - 2, y + 4, { align: "right" });
 
-                // Assinaturas
-                const signatureY = docHeight - 20;
-                const sigWidth = 50;
-                const sigLeftX = margin + 15;
-                const sigRightX = docWidth - margin - 15 - sigWidth;
+                        y += Math.max(10, descricaoLines.length * 5);
+                        
+                        // Linha divisória entre itens
+                        if (y < docHeight - 50) {
+                            doc.setDrawColor(220, 220, 220);
+                            doc.line(margin, y, docWidth - margin, y);
+                            y += 5;
+                        }
+                    });
 
+                    // Linha do total
+                    y += 5;
+                    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                    doc.line(margin, y, docWidth - margin, y);
+                    y += 8;
+
+                    doc.setFont("helvetica", "bold");
+                    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+                    doc.rect(margin, y, docWidth - (margin * 2), 10, 'F');
+                    
+                    doc.text("TOTAL GERAL", margin + 2, y + 7);
+                    doc.text(formatarMoeda(totalGeral), docWidth - margin - 2, y + 7, { align: "right" });
+
+                    y += 20;
+                }
+
+                // Seção Assinaturas
+                // Verifica se precisa de nova página para as assinaturas
+                if (y > docHeight - 60) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                const signatureY = docHeight - 50;
+                const sigWidth = 80;
+                const sigLeftX = margin + (docWidth / 4) - (sigWidth / 2);
+                const sigRightX = docWidth - margin - (docWidth / 4) - (sigWidth / 2);
+                
+                // Linha do Recebedor
                 doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
                 doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
-                doc.setFontSize(7);
+                doc.setFontSize(10);
                 doc.setFont("helvetica", "normal");
                 doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-                doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 3, { align: "center", maxWidth: sigWidth });
-                doc.text("Recebedor", sigLeftX + sigWidth / 2, signatureY + 6, { align: "center" });
-
-                doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
-                doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 3, { align: "center", maxWidth: sigWidth });
-                doc.text("Pagador", sigRightX + sigWidth / 2, signatureY + 6, { align: "center" });
-
-                // Data
-                const hoje = new Date().toLocaleDateString('pt-BR');
-                doc.setFontSize(7);
+                doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
+                doc.setFontSize(9);
                 doc.setTextColor(100);
-                doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - 2, { align: "center" });
+                doc.text("Assinatura do Recebedor", sigLeftX + sigWidth / 2, signatureY + 15, { align: "center" });
 
+                // Linha do Pagador
+                doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+                doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 8, { align: "center", maxWidth: sigWidth });
+                doc.setFontSize(9);
+                doc.setTextColor(100);
+                doc.text("Assinatura do Pagador", sigRightX + sigWidth / 2, signatureY + 15, { align: "center" });
+
+                // Data de Emissão (Rodapé)
+                const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                doc.setFontSize(10);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(100);
+                doc.text(`Emitido em: ${hoje}`, docWidth / 2, docHeight - margin + 5, { align: "center" });
+
+                // Salvar o PDF
                 const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
                 doc.save(fileName);
 
@@ -752,6 +802,43 @@
             }
         }
 
+        // Funções auxiliares para o PDF
+        function drawSectionHeader(doc, text, y, color) {
+            const margin = 20;
+            const docWidth = doc.internal.pageSize.getWidth();
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.setFillColor(color[0], color[1], color[2]);
+            doc.setTextColor(255, 255, 255);
+            doc.rect(margin, y, docWidth - (margin * 2), 8, 'F');
+            doc.text(text.toUpperCase(), margin + 5, y + 6);
+        }
+
+        function drawInfoBlock(doc, y, data) {
+            const labelWidth = 45;
+            const margin = 20;
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 51, 51);
+
+            data.forEach(([label, value]) => {
+                if (value && value.trim() !== "") {
+                    doc.setFont("helvetica", "bold");
+                    doc.text(label, margin, y);
+                    doc.setFont("helvetica", "normal");
+                    
+                    // Quebra de texto se for muito longo
+                    const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
+                    doc.text(lines, margin + labelWidth, y);
+                    
+                    y += lines.length * 5 + 2;
+                }
+            });
+            return y;
+        }
+
+        // --- FUNÇÕES CRUD (Salvar, Carregar, Remover) ---
         function getFormData() {
             const data = {
                 recebedorType,
@@ -849,6 +936,7 @@
             `).join('');
         }
 
+        // --- Inicialização ---
         function init() {
             const salvos = localStorage.getItem('recibosGerador');
             if (salvos) {
@@ -860,3 +948,7 @@
         }
 
         init();
+        
+    </script>
+</body>
+</html>
