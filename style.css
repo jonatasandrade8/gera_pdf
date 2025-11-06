@@ -217,6 +217,18 @@ input:focus, select:focus, textarea:focus {
 .btn-load:hover { background: #2980b9; }
 .btn-delete:hover { background: #c0392b; }
 
+/* Estilos de preview (mantidos para o lado HTML) */
+.preview-header { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }
+.preview-title { font-size: 24px; font-weight: bold; color: #2c3e50;}
+.preview-section { margin-bottom: 20px; }
+.preview-section h3 { background: #ecf0f1; padding: 8px; margin-bottom: 10px; border-radius: 2px; font-size: 14px; color: #34495e; border-left: 4px solid #3498db; font-weight: 600;}
+.preview-row { display: flex; margin-bottom: 5px; font-size: 14px; }
+.preview-label { font-weight: bold; width: 120px; color: #34495e; }
+.preview-value { flex-grow: 1; color: #555; }
+.services-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.services-table th, .services-table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+.services-table th { background-color: #3498db; color: white; font-size: 13px; }
+
 @media (max-width: 1024px) { 
     .content { grid-template-columns: 1fr; } 
     .document-preview { max-height: 500px; } 

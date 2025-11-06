@@ -431,254 +431,227 @@ function validarFormulario() {
     return true;
 }
 
-// --- FUNÇÃO DE GERAR PDF PROGRAMÁTICO (CORRIGIDA) ---
+// --- FUNÇÃO DE GERAR PDF COM PDFMAKE (NOVA SOLUÇÃO) ---
 function gerarPDF() {
     if (!validarFormulario()) return;
     
-    // VERIFICAÇÃO DE SEGURANÇA PARA autoTable
-    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF.prototype.autoTable !== 'function') {
-        alert("Erro: O plugin jspdf-autotable não foi carregado corretamente. O PDF não pode ser gerado programaticamente. Por favor, verifique os links CDN no HTML.");
-        console.error("ERRO CRÍTICO: jspdf-autotable não encontrado.");
+    // Verificação de segurança para o PDFMake
+    if (typeof pdfMake === 'undefined' || typeof pdfMake.vfs === 'undefined') {
+        alert("Erro: O PDFMake ou as fontes não foram carregadas corretamente. O PDF não pode ser gerado.");
+        console.error("ERRO CRÍTICO: PDFMake não encontrado.");
         return;
     }
 
-    try {
-        // Inicialização explícita via window.jspdf.jsPDF, garantindo o escopo UMD
-        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+    const getField = (id) => document.getElementById(id).value;
+    const totalGeral = calcularTotal();
+
+    // Endereço formatado (completo)
+    const formatarEnderecoPDF = (tipo) => {
+        const rua = getField(tipo + '-rua');
+        const num = getField(tipo + '-num');
+        const comp = getField(tipo + '-comp');
+        const cidade = getField(tipo + '-cidade');
+        const uf = getField(tipo + '-uf');
+        const cep = getField(tipo + '-cep');
+
+        const linhas = [];
+        if (rua && num) linhas.push({ text: `${rua}, ${num}` });
+        if (comp) linhas.push({ text: `Compl.: ${comp}` });
+        if (cidade && uf) linhas.push({ text: `${cidade}/${uf}`, margin: [0, 2, 0, 0] });
+        if (cep) linhas.push({ text: `CEP: ${cep}` });
         
-        // Constantes de Layout
-        const margin = 15;
-        const docWidth = doc.internal.pageSize.getWidth();
-        let y = margin;
-        const lineHeight = 5;
-        
-        // Cores neutras e profissionais
-        const primaryColor = [52, 73, 94]; // Azul Escuro/Cinza
-        const secondaryColor = [236, 240, 241]; // Cinza muito claro
-        const textColor = [44, 62, 80]; // Quase preto
+        return linhas.length > 0 ? linhas : [{ text: 'N/A' }];
+    };
 
-        // --- Dados do Formulário ---
-        const getField = (id) => document.getElementById(id).value;
-        const recebedorNome = getField('recebedor-nome');
-        const pagadorNome = getField('pagador-nome') || 'PAGADOR';
-        const totalGeral = calcularTotal();
+    const recebedorEnd = formatarEnderecoPDF('recebedor');
+    const pagadorEnd = formatarEnderecoPDF('pagador');
 
-        // Endereço formatado (completo)
-        const formatarEnderecoPDF = (tipo) => {
-            const rua = getField(tipo + '-rua');
-            const num = getField(tipo + '-num');
-            const comp = getField(tipo + '-comp');
-            const cidade = getField(tipo + '-cidade');
-            const uf = getField(tipo + '-uf');
-            const cep = getField(tipo + '-cep');
+    // Período
+    const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
+    const dataInicioInput = getField('periodo-inicio');
+    const dataFimInput = getField('periodo-fim');
+    const formatarData = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
+    const textoPeriodicidade = `${periodoTipo} de ${formatarData(dataInicioInput)} a ${formatarData(dataFimInput)}`;
 
-            const linha1 = [rua, num].filter(Boolean).join(', ') + (comp ? ` - ${comp}` : '');
-            const linha2 = [cidade, uf].filter(Boolean).join('/');
-            const linha3 = cep;
+    // --- Tabela de Serviços (Document Definition) ---
+    const tableBody = [
+        [{ text: 'Descrição', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'left' }, 
+         { text: 'Qtd', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'center' }, 
+         { text: 'Preço Unit.', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'right' }, 
+         { text: 'Total', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'right' }]
+    ];
+
+    servicos.forEach(s => {
+        tableBody.push([
+            { text: s.descricao || 'N/D', alignment: 'left' },
+            { text: s.quantidade.toString(), alignment: 'center' },
+            { text: formatarMoeda(s.preco), alignment: 'right' },
+            { text: formatarMoeda(s.quantidade * s.preco), alignment: 'right', bold: true }
+        ]);
+    });
+
+    // Linha do Total
+    tableBody.push([
+        { text: 'TOTAL FINAL', colSpan: 3, bold: true, alignment: 'right', fillColor: '#ecf0f1' },
+        {},
+        {},
+        { text: formatarMoeda(totalGeral), alignment: 'right', bold: true, fillColor: '#ecf0f1', color: '#3498db' }
+    ]);
+
+
+    // --- Document Definition (Estrutura do PDF) ---
+    const docDefinition = {
+        pageSize: 'A4',
+        pageMargins: [ 40, 40, 40, 40 ],
+        defaultStyle: {
+            font: 'Helvetica' 
+        },
+        content: [
+            // Título
+            { text: 'R E C I B O', fontSize: 32, bold: true, alignment: 'center', color: '#34495e' },
+            { text: 'DE PAGAMENTO', fontSize: 18, alignment: 'center', color: '#7f8c8d', margin: [0, 5, 0, 10] },
+            { text: `VALOR TOTAL: ${formatarMoeda(totalGeral)}`, fontSize: 16, bold: true, alignment: 'center', color: '#2ecc71', margin: [0, 0, 0, 20] },
+
+            // Linha Separadora
+            { canvas: [ { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#3498db' } ], margin: [0, 0, 0, 15] },
+
+            // --- Bloco Recebedor ---
+            { text: 'RECEBEDOR (Prestador de Serviço)', style: 'sectionHeader' },
+            {
+                columns: [
+                    { width: 100, stack: [
+                        { text: `${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, style: 'label' },
+                        { text: `${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, style: 'label' },
+                        { text: 'Telefone:', style: 'label' },
+                        { text: 'Endereço:', style: 'label', margin: [0, 5, 0, 0] },
+                    ]},
+                    { width: '*', stack: [
+                        { text: getField('recebedor-nome') || '—', style: 'value' },
+                        { text: getField('recebedor-doc') || '—', style: 'value' },
+                        { text: getField('recebedor-tel') || '—', style: 'value' },
+                        { stack: recebedorEnd, margin: [0, 5, 0, 0] }
+                    ]}
+                ],
+                columnGap: 10,
+                margin: [0, 0, 0, 15]
+            },
+
+            // --- Bloco Pagador ---
+            { text: 'PAGADOR (Cliente)', style: 'sectionHeader' },
+            {
+                columns: [
+                    { width: 100, stack: [
+                        { text: `${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, style: 'label' },
+                        { text: `${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, style: 'label' },
+                        { text: 'Endereço:', style: 'label', margin: [0, 5, 0, 0] },
+                    ]},
+                    { width: '*', stack: [
+                        { text: getField('pagador-nome') || '—', style: 'value' },
+                        { text: getField('pagador-doc') || '—', style: 'value' },
+                        { stack: pagadorEnd, margin: [0, 5, 0, 0] }
+                    ]}
+                ],
+                columnGap: 10,
+                margin: [0, 0, 0, 15]
+            },
             
-            return [linha1, linha2, linha3].filter(Boolean);
-        };
+            // --- Bloco Período ---
+            { text: 'PERÍODO DE PRESTAÇÃO', style: 'sectionHeader' },
+            {
+                columns: [
+                    { width: 100, text: 'Referente a:', style: 'label' },
+                    { width: '*', text: textoPeriodicidade, style: 'value' }
+                ],
+                margin: [0, 0, 0, 20]
+            },
 
-        const recebedorEnd = formatarEnderecoPDF('recebedor');
-        const pagadorEnd = formatarEnderecoPDF('pagador');
+            // --- Tabela de Serviços ---
+            { text: 'DISCRIMINAÇÃO DOS SERVIÇOS/PRODUTOS', style: 'sectionHeader' },
+            {
+                style: 'itemsTable',
+                table: {
+                    headerRows: 1,
+                    // Definição das Larguras (Proporcional)
+                    widths: ['*', 40, 70, 70], 
+                    body: tableBody
+                },
+                layout: {
+                    fillColor: function (rowIndex, node, columnIndex) {
+                        return (rowIndex % 2 === 0) ? '#f2f2f2' : null;
+                    },
+                    hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
+                    vLineWidth: (i) => 0,
+                    hLineColor: (i) => (i === 1 || i === node.table.body.length) ? '#3498db' : '#bbbbbb',
+                    paddingLeft: (i) => 10,
+                    paddingRight: (i, node) => 10,
+                    paddingTop: (i) => 5,
+                    paddingBottom: (i) => 5,
+                }
+            },
 
-        // Período
-        const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-        const dataInicioInput = getField('periodo-inicio');
-        const dataFimInput = getField('periodo-fim');
-        const formatarData = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
-        const textoPeriodicidade = `${periodoTipo} de ${formatarData(dataInicioInput)} a ${formatarData(dataFimInput)}`;
-
-        // --- Título e Cabeçalho ---
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.setFontSize(28);
-        doc.setFont("helvetica", "bold");
-        doc.text("R E C I B O", docWidth / 2, y, { align: "center" });
-        y += 10;
-        
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Valor Total: ${formatarMoeda(totalGeral)}`, docWidth / 2, y, { align: "center" });
-        y += 15;
-
-        // Funções auxiliares para o PDF
-        const drawSectionHeader = (text, currentY) => {
-            doc.setDrawColor(200, 200, 200);
-            doc.line(margin, currentY, docWidth - margin, currentY);
-            currentY += 4; 
-            
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-            doc.text(text.toUpperCase(), margin, currentY);
-            
-            currentY += 2;
-            doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-            doc.setLineWidth(0.5);
-            doc.line(margin, currentY, docWidth - margin, currentY);
-            doc.setLineWidth(0.2);
-            
-            return currentY + 3;
-        };
-
-        const drawInfoBlock = (currentY, data) => {
-            const labelWidth = 35; // Aumentado ligeiramente para melhor leitura
-            doc.setFontSize(10);
-            doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-            
-            data.forEach(([label, value]) => {
-                if (value && value.trim() !== "") {
-                    // Adiciona nova página se necessário
-                    if (currentY + lineHeight > doc.internal.pageSize.getHeight() - 50) {
-                        doc.addPage();
-                        currentY = margin;
-                        doc.setFontSize(10);
+            // --- Assinaturas ---
+            { 
+                text: 'E, para clareza e validade, o presente recibo é assinado abaixo:', 
+                alignment: 'center', 
+                margin: [0, 50, 0, 20],
+                fontSize: 10
+            },
+            {
+                columns: [
+                    {
+                        width: '50%',
+                        stack: [
+                            { canvas: [ { type: 'line', x1: 50, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: '#34495e' } ] },
+                            { text: getField('recebedor-nome') || 'Nome do Recebedor', alignment: 'center', fontSize: 10, margin: [0, 5, 0, 0] },
+                            { text: 'Recebedor (Prestador)', alignment: 'center', fontSize: 8, color: '#7f8c8d' }
+                        ]
+                    },
+                    {
+                        width: '50%',
+                        stack: [
+                            { canvas: [ { type: 'line', x1: 50, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: '#34495e' } ] },
+                            { text: getField('pagador-nome') || 'Nome do Pagador', alignment: 'center', fontSize: 10, margin: [0, 5, 0, 0] },
+                            { text: 'Pagador (Cliente)', alignment: 'center', fontSize: 8, color: '#7f8c8d' }
+                        ]
                     }
+                ]
+            }
+        ],
 
-                    doc.setFont("helvetica", "bold");
-                    doc.text(label, margin, currentY); 
-                    
-                    doc.setFont("helvetica", "normal");
-                    const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
-                    doc.text(lines, margin + labelWidth, currentY);
-                    
-                    currentY += lines.length * lineHeight;
-                }
-            });
-            return currentY;
-        };
-
-
-        // --- Bloco Recebedor ---
-        y = drawSectionHeader("RECEBEDOR (Prestador de Serviço)", y);
-        y += 2;
-        y = drawInfoBlock(y, [
-            [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, getField('recebedor-nome')],
-            [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, getField('recebedor-doc')],
-            ["Telefone:", getField('recebedor-tel')],
-            ...recebedorEnd.map(l => ["Endereço:", l])
-        ]);
-        y += 5;
-
-        // --- Bloco Pagador ---
-        y = drawSectionHeader("PAGADOR (Cliente)", y);
-        y += 2;
-        y = drawInfoBlock(y, [
-            [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, getField('pagador-nome')],
-            [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, getField('pagador-doc')],
-            ["Telefone:", getField('pagador-tel')],
-            ...pagadorEnd.map(l => ["Endereço:", l])
-        ]);
-        y += 5;
-
-        // --- Bloco Período ---
-        y = drawSectionHeader("PERÍODO DE PRESTAÇÃO", y);
-        y += 2;
-        y = drawInfoBlock(y, [
-            ["Referente a:", textoPeriodicidade]
-        ]);
-        y += 5;
-
-
-        // --- Tabela de Serviços (Usando autoTable) ---
-        if (servicos.length > 0) {
-            y = drawSectionHeader("DISCRIMINAÇÃO DOS SERVIÇOS/PRODUTOS", y);
-            y += 2;
-            
-            const tableHeaders = ["Descrição", "Qtd", "Preço Unit.", "Total"];
-            const tableData = servicos.map(s => [
-                s.descricao || 'N/D',
-                s.quantidade.toString(),
-                formatarMoeda(s.preco),
-                formatarMoeda(s.quantidade * s.preco)
-            ]);
-            
-            // Adiciona a linha do Total como uma linha com colSpan
-            const totalRow = [
-                { content: "TOTAL FINAL", colSpan: 3, styles: { fontStyle: 'bold', halign: 'right', fillColor: secondaryColor } },
-                { content: formatarMoeda(totalGeral), styles: { fontStyle: 'bold', fillColor: secondaryColor, textColor: primaryColor } }
-            ];
-
-            // Estilo da Tabela
-            doc.autoTable({
-                startY: y,
-                head: [tableHeaders],
-                body: [...tableData, totalRow],
-                theme: 'striped',
-                margin: { top: 0, left: margin, right: margin, bottom: 0 },
-                styles: { 
-                    fontSize: 10, 
-                    cellPadding: 2, 
-                    textColor: textColor,
-                    lineColor: [189, 195, 199],
-                    lineWidth: 0.1 
-                },
-                headStyles: {
-                    fillColor: primaryColor,
-                    textColor: 255,
-                    fontStyle: 'bold',
-                },
-                columnStyles: {
-                    0: { cellWidth: docWidth - (margin * 2) - 100 }, 
-                    1: { halign: 'center', cellWidth: 20 }, 
-                    2: { halign: 'right', cellWidth: 40 }, 
-                    3: { halign: 'right', cellWidth: 40 } 
-                },
-                didDrawPage: (data) => {
-                    y = data.cursor.y; 
-                }
-            });
-            y = doc.autoTable.previous.finalY; // Atualiza a posição Y após a tabela
-            y += 5;
+        // Estilos
+        styles: {
+            sectionHeader: {
+                fontSize: 12,
+                bold: true,
+                color: '#34495e',
+                fillColor: '#ecf0f1',
+                decoration: 'underline',
+                decorationColor: '#3498db',
+                margin: [0, 10, 0, 5]
+            },
+            label: {
+                bold: true,
+                fontSize: 10,
+                color: '#34495e'
+            },
+            value: {
+                fontSize: 10,
+                color: '#555'
+            },
+            itemsTable: {
+                margin: [0, 5, 0, 15]
+            }
         }
+    };
 
-        // --- Assinaturas ---
-        const signatureY = doc.internal.pageSize.getHeight() - 40;
-        const sigWidth = 60;
-        const sigGap = 30; 
-        const sigLeftX = margin + (docWidth - (2 * sigWidth) - sigGap) / 2;
-        const sigRightX = sigLeftX + sigWidth + sigGap;
+    const recebedorNome = getField('recebedor-nome');
+    const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
 
-        // Assinatura do Recebedor
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY); 
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); 
-        doc.setFontSize(9);
-        doc.setTextColor(127, 140, 141);
-        doc.text("Recebedor (Prestador)", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" }); 
-
-        // Assinatura do Pagador
-        doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY); 
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); 
-        doc.setFontSize(9);
-        doc.setTextColor(127, 140, 141);
-        doc.text("Pagador (Cliente)", sigRightX + sigWidth / 2, signatureY + 10, { align: "center" }); 
-
-        // Data de Emissão (Rodapé)
-        const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(127, 140, 141);
-        doc.text(`Recibo gerado em: ${hoje}`, docWidth - margin, doc.internal.pageSize.getHeight() - 5, { align: "right" });
-
-        // Salvar o PDF
-        const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
-        doc.save(fileName);
-
-    } catch (error) {
-        console.error('Erro fatal ao gerar PDF:', error);
-        alert('Erro ao gerar PDF. Verifique o console para mais detalhes. O plugin jspdf-autotable pode não ter sido carregado corretamente.');
-    }
+    pdfMake.createPdf(docDefinition).download(fileName);
 }
 
 // --- FUNÇÕES CRUD (Salvar, Carregar, Remover) --- 
+// (Mantidas do script anterior, pois são boas práticas)
 function getFormData() {
     const data = {
         recebedorType,
@@ -778,6 +751,23 @@ function renderRecibosSalvos() {
 
 // --- Inicialização ---
 function init() {
+    // Configura a fonte para o PDFMake. Se for usar a fonte padrão (Helvetica/Times), 
+    // é necessário ter certeza que o pdfMake.vfs_fonts está carregado.
+    if (typeof pdfMake !== 'undefined') {
+        pdfMake.fonts = {
+            Helvetica: {
+                normal: 'Helvetica-normal.js',
+                bold: 'Helvetica-bold.js',
+                italics: 'Helvetica-italics.js',
+                bolditalics: 'Helvetica-bolditalics.js'
+            }
+        };
+        pdfMake.vfs = pdfMake.vfs || {};
+        if (typeof vfs_fonts !== 'undefined') {
+             Object.assign(pdfMake.vfs, vfs_fonts.pdfMake.vfs);
+        }
+    }
+
     const salvos = localStorage.getItem('recibosGerador');
     if (salvos) {
         recibosSalvos = JSON.parse(salvos);
