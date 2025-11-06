@@ -1,7 +1,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    /* Cor de fundo neutra e suave */
     background: #f0f2f5; 
     min-height: 100vh; 
     padding: 20px; 
@@ -12,7 +11,7 @@ body {
 }
 .header { 
     text-align: center; 
-    color: #333; /* Cor escura para mais profissionalismo */
+    color: #333; 
     margin-bottom: 30px; 
 }
 .header h1 { 
@@ -27,14 +26,14 @@ body {
 }
 .form-section { 
     background: white; 
-    border-radius: 8px; /* Bordas mais suaves */
+    border-radius: 8px; 
     padding: 30px; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
 }
 .form-section h2 { 
-    color: #2c3e50; /* Título escuro */
+    color: #2c3e50; 
     margin-bottom: 20px; 
-    border-bottom: 2px solid #bdc3c7; /* Linha de divisão cinza */
+    border-bottom: 2px solid #bdc3c7; 
     padding-bottom: 10px; 
 }
 .form-group { 
@@ -57,7 +56,7 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { 
     outline: none; 
-    border-color: #3498db; /* Azul profissional */
+    border-color: #3498db; 
     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1); 
 }
 .row { 
@@ -112,12 +111,6 @@ input:focus, select:focus, textarea:focus {
 .service-item:last-child { 
     margin-bottom: 0; 
 }
-.service-field { 
-    margin-bottom: 10px; 
-}
-.service-field:last-child { 
-    margin-bottom: 0; 
-}
 .service-field label { 
     display: block; 
     margin-bottom: 4px; 
@@ -125,12 +118,9 @@ input:focus, select:focus, textarea:focus {
     font-weight: 500; 
     font-size: 12px; 
 }
-.service-field input { 
-    padding: 8px;
-}
 .service-row { 
     display: grid; 
-    grid-template-columns: 1fr 1fr 1fr 60px; /* Mais espaço para o botão */
+    grid-template-columns: 1fr 1fr 1fr 60px; 
     gap: 10px; 
     align-items: flex-end; 
 }
@@ -180,7 +170,6 @@ input:focus, select:focus, textarea:focus {
     background: #27ae60; 
 }
 .total-box { 
-    /* Estilo profissional e neutro */
     background: #f5f5f5; 
     color: #2c3e50; 
     padding: 15px; 
@@ -201,73 +190,10 @@ input:focus, select:focus, textarea:focus {
     border-radius: 8px; 
     padding: 30px; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-    max-height: 700px; /* Aumenta a altura para melhor visualização */
+    max-height: 700px; 
     overflow-y: auto; 
     border: 1px solid #dcdde1;
 }
-.preview-header { 
-    text-align: center; 
-    border-bottom: 2px solid #3498db; 
-    padding-bottom: 15px; 
-    margin-bottom: 20px; 
-}
-.preview-title { 
-    font-size: 28px; 
-    font-weight: bold; 
-    color: #2c3e50;
-}
-.preview-section { 
-    margin-bottom: 20px; 
-}
-.preview-section h3 { 
-    background: #ecf0f1; 
-    padding: 8px; 
-    margin-bottom: 10px; 
-    border-radius: 2px; 
-    font-size: 14px; 
-    color: #34495e; 
-    border-left: 4px solid #3498db; 
-    font-weight: 600;
-}
-.preview-content { 
-    font-size: 14px; 
-    line-height: 1.6; 
-}
-.preview-row { 
-    display: grid; 
-    grid-template-columns: 100px 1fr; 
-    margin-bottom: 3px; 
-    gap: 10px; 
-}
-.preview-label { 
-    font-weight: 600; 
-    color: #34495e; 
-}
-.preview-value { 
-    color: #666; 
-}
-.services-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 14px; 
-}
-.services-table th { 
-    background: #3498db; 
-    color: white;
-    padding: 10px; 
-    text-align: left; 
-    border-bottom: 2px solid #2c3e50; 
-    font-weight: 600; 
-}
-.services-table td { 
-    padding: 8px; 
-    border-bottom: 1px solid #e0e0e0; 
-    color: #34495e;
-}
-.services-table tr:last-child td { 
-    border-bottom: 2px solid #3498db; 
-}
-/* Estilo para Fieldset */
 .section-group {
     border: 1px solid #bdc3c7;
     padding: 20px;
@@ -280,13 +206,6 @@ input:focus, select:focus, textarea:focus {
     color: #2c3e50;
     padding: 0 10px;
     margin-left: -5px;
-}
-.section-title { 
-    color: #3498db; 
-    margin-top: 25px; 
-    margin-bottom: 15px; 
-    font-size: 16px; 
-    font-weight: 600; 
 }
 /* Estilos para Recibos Salvos */
 .saved-receipts-list { margin-top: 15px; max-height: 200px; overflow-y: auto; background: #ecf0f1; border-radius: 4px; padding: 10px; }

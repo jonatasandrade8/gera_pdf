@@ -75,7 +75,6 @@ function setRecebedorType(type) {
         labelDoc.textContent = 'CNPJ *';
         inputDoc.placeholder = '00.000.000/0000-00';
     }
-    // Não limpa o valor, apenas formata o que está lá
     formatarDocumento(inputDoc);
     atualizarPrevia();
 }
@@ -97,7 +96,6 @@ function setPagadorType(type) {
         labelDoc.textContent = 'CNPJ';
         inputDoc.placeholder = '00.000.000/0000-00';
     }
-    // Não limpa o valor, apenas formata o que está lá
     formatarDocumento(inputDoc);
     atualizarPrevia();
 }
@@ -119,7 +117,6 @@ function buscarCEP(tipo) {
                 atualizarPrevia();
             } else {
                 console.warn('CEP não encontrado!');
-                // Não alertamos, apenas logamos, para não interromper a UX
             }
         })
         .catch(err => {
@@ -145,10 +142,15 @@ function buscarCNPJ(tipo) {
             document.getElementById(tipo + '-rua').value = data.logradouro || '';
             document.getElementById(tipo + '-num').value = data.numero || '';
             document.getElementById(tipo + '-comp').value = data.complemento || '';
-            document.getElementById(tipo + '-cep').value = data.cep ? formatarCEP({ value: data.cep }) : '';
+            // Atualiza o CEP formatando o valor
+            const cepValue = data.cep ? data.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '';
+            document.getElementById(tipo + '-cep').value = cepValue;
             document.getElementById(tipo + '-cidade').value = data.municipio || '';
             document.getElementById(tipo + '-uf').value = data.uf || '';
-            document.getElementById(tipo + '-tel').value = data.ddd_telefone_1 ? formatarTelefone({ value: data.ddd_telefone_1 }) : '';
+            
+            // Atualiza o telefone formatando o valor
+            const telefoneValue = data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0, 2)}) ${data.ddd_telefone_1.substring(2)}` : '';
+            document.getElementById(tipo + '-tel').value = telefoneValue;
             
             atualizarPrevia();
         })
@@ -203,7 +205,7 @@ function renderizarServicos() {
                     <input type="number" min="0" step="0.01" placeholder="1" value="${s.quantidade}" oninput="atualizarServico(${s.id}, 'quantidade', this.value)">
                 </div>
                 <div class="service-field">
-                    <label>Preço UNIT:</label>
+                    <label>Preço UNIT (R$):</label>
                     <input type="number" min="0" step="0.01" placeholder="0.00" value="${s.preco}" oninput="atualizarServico(${s.id}, 'preco', this.value)">
                 </div>
                 <div class="service-field">
@@ -232,29 +234,30 @@ function formatarMoeda(valor) {
 function atualizarPrevia() {
     const total = calcularTotal();
 
+    const getField = (id) => document.getElementById(id).value;
+
     const recebedorEnd = [
-        document.getElementById('recebedor-rua').value,
-        document.getElementById('recebedor-num').value,
-        document.getElementById('recebedor-comp').value,
-        document.getElementById('recebedor-cidade').value,
-        document.getElementById('recebedor-uf').value
+        getField('recebedor-rua'),
+        getField('recebedor-num'),
+        getField('recebedor-comp'),
+        getField('recebedor-cidade'),
+        getField('recebedor-uf')
     ].filter(Boolean).join(', ');
 
     const pagadorEnd = [
-        document.getElementById('pagador-rua').value,
-        document.getElementById('pagador-num').value,
-        document.getElementById('pagador-comp').value,
-        document.getElementById('pagador-cidade').value,
-        document.getElementById('pagador-uf').value
+        getField('pagador-rua'),
+        getField('pagador-num'),
+        getField('pagador-comp'),
+        getField('pagador-cidade'),
+        getField('pagador-uf')
     ].filter(Boolean).join(', ');
 
     const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-    const dataInicio = document.getElementById('periodo-inicio').value;
-    const dataFim = document.getElementById('periodo-fim').value;
+    const dataInicio = getField('periodo-inicio');
+    const dataFim = getField('periodo-fim');
     let textoPeriodo = '';
     if (dataInicio && dataFim) {
-        // Formata as datas para o preview
-        const formatarData = (data) => data.split('-').reverse().join('/');
+        const formatarData = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
         textoPeriodo = `${periodoTipo} de ${formatarData(dataInicio)} a ${formatarData(dataFim)}`;
     }
 
@@ -269,16 +272,16 @@ function atualizarPrevia() {
             <div class="preview-content">
                 <div class="preview-row">
                     <div class="preview-label">${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:</div>
-                    <div class="preview-value">${document.getElementById('recebedor-nome').value || '—'}</div>
+                    <div class="preview-value">${getField('recebedor-nome') || '—'}</div>
                 </div>
                 <div class="preview-row">
                     <div class="preview-label">${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</div>
-                    <div class="preview-value">${document.getElementById('recebedor-doc').value || '—'}</div>
+                    <div class="preview-value">${getField('recebedor-doc') || '—'}</div>
                 </div>
                 ${recebedorEnd ? `<div class="preview-row"><div class="preview-label">Endereço:</div><div class="preview-value">${recebedorEnd}</div></div>` : ''}
                 <div class="preview-row">
                     <div class="preview-label">Telefone:</div>
-                    <div class="preview-value">${document.getElementById('recebedor-tel').value || '—'}</div>
+                    <div class="preview-value">${getField('recebedor-tel') || '—'}</div>
                 </div>
             </div>
         </div>
@@ -288,12 +291,12 @@ function atualizarPrevia() {
             <div class="preview-content">
                 <div class="preview-row">
                     <div class="preview-label">${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:</div>
-                    <div class="preview-value">${document.getElementById('pagador-nome').value || '—'}</div>
+                    <div class="preview-value">${getField('pagador-nome') || '—'}</div>
                 </div>
-                ${document.getElementById('pagador-doc').value ? `
+                ${getField('pagador-doc') ? `
                     <div class="preview-row">
                         <div class="preview-label">${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</div>
-                        <div class="preview-value">${document.getElementById('pagador-doc').value}</div>
+                        <div class="preview-value">${getField('pagador-doc')}</div>
                     </div>
                 ` : ''}
                 ${pagadorEnd ? `<div class="preview-row"><div class="preview-label">Endereço:</div><div class="preview-value">${pagadorEnd}</div></div>` : ''}
@@ -394,15 +397,14 @@ function validarFormulario() {
     return true;
 }
 
-// --- FUNÇÃO DE GERAR PDF CORRIGIDA E MELHORADA ---
+// --- FUNÇÃO DE GERAR PDF CORRIGIDA ---
 function gerarPDF() {
     if (!validarFormulario()) return;
 
     try {
-        // Inicializar o jsPDF de forma robusta e corrigida.
-        // O acesso direto a 'window.jspdf.jsPDF' garante que o plugin 'autoTable' já tenha estendido o construtor,
-        // resolvendo o "TypeError: doc.autoTable is not a function".
-        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4'); // <-- CORREÇÃO CRÍTICA
+        // CORREÇÃO CRÍTICA: Inicialização explícita via window.jspdf.jsPDF
+        // Garante que o objeto jsPDF usado seja aquele estendido pelo jspdf-autotable.
+        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
         
         // Constantes de Layout
         const margin = 15;
@@ -416,18 +418,19 @@ function gerarPDF() {
         const textColor = [44, 62, 80]; // Quase preto
 
         // --- Dados do Formulário ---
-        const recebedorNome = document.getElementById('recebedor-nome').value;
-        const pagadorNome = document.getElementById('pagador-nome').value || 'PAGADOR';
+        const getField = (id) => document.getElementById(id).value;
+        const recebedorNome = getField('recebedor-nome');
+        const pagadorNome = getField('pagador-nome') || 'PAGADOR';
         const totalGeral = calcularTotal();
 
         // Endereço formatado (completo)
         const formatarEndereco = (tipo) => {
-            const rua = document.getElementById(tipo + '-rua').value;
-            const num = document.getElementById(tipo + '-num').value;
-            const comp = document.getElementById(tipo + '-comp').value;
-            const cidade = document.getElementById(tipo + '-cidade').value;
-            const uf = document.getElementById(tipo + '-uf').value;
-            const cep = document.getElementById(tipo + '-cep').value;
+            const rua = getField(tipo + '-rua');
+            const num = getField(tipo + '-num');
+            const comp = getField(tipo + '-comp');
+            const cidade = getField(tipo + '-cidade');
+            const uf = getField(tipo + '-uf');
+            const cep = getField(tipo + '-cep');
 
             const linha1 = [rua, num].filter(Boolean).join(', ') + (comp ? ` - ${comp}` : '');
             const linha2 = [cidade, uf].filter(Boolean).join('/');
@@ -441,8 +444,8 @@ function gerarPDF() {
 
         // Período
         const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-        const dataInicioInput = document.getElementById('periodo-inicio').value;
-        const dataFimInput = document.getElementById('periodo-fim').value;
+        const dataInicioInput = getField('periodo-inicio');
+        const dataFimInput = getField('periodo-fim');
         const formatarDataPDF = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
         const textoPeriodicidade = `${periodoTipo} de ${formatarDataPDF(dataInicioInput)} a ${formatarDataPDF(dataFimInput)}`;
 
@@ -458,32 +461,82 @@ function gerarPDF() {
         doc.text(`Valor Total: ${formatarMoeda(totalGeral)}`, docWidth / 2, y, { align: "center" });
         y += 15;
 
+        // Funções auxiliares para o PDF
+        const drawSectionHeader = (text, currentY) => {
+            // Linha cinza clara de divisão
+            doc.setDrawColor(200, 200, 200);
+            doc.line(margin, currentY, docWidth - margin, currentY);
+            currentY += 4; 
+            
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+            doc.text(text.toUpperCase(), margin, currentY);
+            
+            currentY += 2;
+            // Linha cinza escura de ênfase
+            doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+            doc.setLineWidth(0.5);
+            doc.line(margin, currentY, docWidth - margin, currentY);
+            doc.setLineWidth(0.2);
+            
+            return currentY + 3;
+        };
+
+        const drawInfoBlock = (currentY, data) => {
+            const labelWidth = 30; 
+            doc.setFontSize(10);
+            doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+
+            data.forEach(([label, value]) => {
+                if (value && value.trim() !== "") {
+                    // Adiciona nova página se necessário
+                    if (currentY + lineHeight > doc.internal.pageSize.getHeight() - 50) {
+                        doc.addPage();
+                        currentY = margin;
+                        doc.setFontSize(10);
+                    }
+
+                    doc.setFont("helvetica", "bold");
+                    doc.text(label, margin, currentY); 
+                    
+                    doc.setFont("helvetica", "normal");
+                    const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
+                    doc.text(lines, margin + labelWidth, currentY);
+                    
+                    currentY += lines.length * lineHeight;
+                }
+            });
+            return currentY;
+        };
+
+
         // --- Bloco Recebedor ---
-        y = drawSectionHeader(doc, "RECEBEDOR (Prestador de Serviço)", y, margin, docWidth, primaryColor, textColor);
+        y = drawSectionHeader("RECEBEDOR (Prestador de Serviço)", y);
         y += 2;
-        y = drawInfoBlock(doc, y, margin, lineHeight, textColor, [
-            [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, document.getElementById('recebedor-nome').value],
-            [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('recebedor-doc').value],
-            ["Telefone:", document.getElementById('recebedor-tel').value],
+        y = drawInfoBlock(y, [
+            [`${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, getField('recebedor-nome')],
+            [`${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, getField('recebedor-doc')],
+            ["Telefone:", getField('recebedor-tel')],
             ...recebedorEnd.map(l => ["Endereço:", l])
         ]);
         y += 5;
 
         // --- Bloco Pagador ---
-        y = drawSectionHeader(doc, "PAGADOR (Cliente)", y, margin, docWidth, primaryColor, textColor);
+        y = drawSectionHeader("PAGADOR (Cliente)", y);
         y += 2;
-        y = drawInfoBlock(doc, y, margin, lineHeight, textColor, [
-            [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, document.getElementById('pagador-nome').value],
-            [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, document.getElementById('pagador-doc').value],
-            ["Telefone:", document.getElementById('pagador-tel').value],
+        y = drawInfoBlock(y, [
+            [`${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, getField('pagador-nome')],
+            [`${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, getField('pagador-doc')],
+            ["Telefone:", getField('pagador-tel')],
             ...pagadorEnd.map(l => ["Endereço:", l])
         ]);
         y += 5;
 
         // --- Bloco Período ---
-        y = drawSectionHeader(doc, "PERÍODO DE PRESTAÇÃO", y, margin, docWidth, primaryColor, textColor);
+        y = drawSectionHeader("PERÍODO DE PRESTAÇÃO", y);
         y += 2;
-        y = drawInfoBlock(doc, y, margin, lineHeight, textColor, [
+        y = drawInfoBlock(y, [
             ["Referente a:", textoPeriodicidade]
         ]);
         y += 5;
@@ -491,41 +544,35 @@ function gerarPDF() {
 
         // --- Tabela de Serviços (Usando autoTable) ---
         if (servicos.length > 0) {
-            y = drawSectionHeader(doc, "DISCRIMINAÇÃO DOS SERVIÇOS/PRODUTOS", y, margin, docWidth, primaryColor, textColor);
+            y = drawSectionHeader("DISCRIMINAÇÃO DOS SERVIÇOS/PRODUTOS", y);
             y += 2;
             
-            const tableHeaders = [
-                { title: "Descrição", dataKey: "descricao" },
-                { title: "Qtd", dataKey: "quantidade" },
-                { title: "Preço Unit.", dataKey: "preco" },
-                { title: "Total", dataKey: "total" }
-            ];
-
-            const tableData = servicos.map(s => ({
-                descricao: s.descricao || 'N/D',
-                quantidade: s.quantidade.toString(),
-                preco: formatarMoeda(s.preco),
-                total: formatarMoeda(s.quantidade * s.preco)
-            }));
+            const tableHeaders = ["Descrição", "Qtd", "Preço Unit.", "Total"];
+            const tableData = servicos.map(s => [
+                s.descricao || 'N/D',
+                s.quantidade.toString(),
+                formatarMoeda(s.preco),
+                formatarMoeda(s.quantidade * s.preco)
+            ]);
             
-            // Adiciona a linha do Total
-            const totalRow = {
-                descricao: { content: "TOTAL FINAL", colSpan: 3, styles: { fontStyle: 'bold', halign: 'right', fillColor: secondaryColor } },
-                total: { content: formatarMoeda(totalGeral), styles: { fontStyle: 'bold', fillColor: secondaryColor, textColor: primaryColor } }
-            };
+            // Adiciona a linha do Total como uma linha com colSpan
+            const totalRow = [
+                { content: "TOTAL FINAL", colSpan: 3, styles: { fontStyle: 'bold', halign: 'right', fillColor: secondaryColor } },
+                { content: formatarMoeda(totalGeral), styles: { fontStyle: 'bold', fillColor: secondaryColor, textColor: primaryColor } }
+            ];
 
             // Estilo da Tabela
             doc.autoTable({
                 startY: y,
-                head: [tableHeaders.map(h => h.title)],
-                body: [...tableData.map(d => [d.descricao, d.quantidade, d.preco, d.total]), totalRow],
+                head: [tableHeaders],
+                body: [...tableData, totalRow],
                 theme: 'striped',
                 margin: { top: 0, left: margin, right: margin, bottom: 0 },
                 styles: { 
                     fontSize: 10, 
                     cellPadding: 2, 
                     textColor: textColor,
-                    lineColor: [189, 195, 199], // Cinza
+                    lineColor: [189, 195, 199],
                     lineWidth: 0.1 
                 },
                 headStyles: {
@@ -534,47 +581,46 @@ function gerarPDF() {
                     fontStyle: 'bold',
                 },
                 columnStyles: {
-                    0: { cellWidth: docWidth - (margin * 2) - 100 }, // Descrição
-                    1: { halign: 'center', cellWidth: 20 }, // Qtd
-                    2: { halign: 'right', cellWidth: 40 }, // Preço Unit.
-                    3: { halign: 'right', cellWidth: 40 } // Total
+                    0: { cellWidth: docWidth - (margin * 2) - 100 }, 
+                    1: { halign: 'center', cellWidth: 20 }, 
+                    2: { halign: 'right', cellWidth: 40 }, 
+                    3: { halign: 'right', cellWidth: 40 } 
                 },
                 didDrawPage: (data) => {
-                    y = data.cursor.y; // Atualiza a posição Y após a tabela
+                    y = data.cursor.y; 
                 }
             });
             y += 5;
         }
 
-        // --- Assinaturas (Duas Linhas Separadas ao Final) ---
+        // --- Assinaturas ---
         const signatureY = doc.internal.pageSize.getHeight() - 40;
         const sigWidth = 60;
-        const sigGap = 30; // Espaço entre as assinaturas
-        // Centraliza os blocos de assinatura na página
+        const sigGap = 30; 
         const sigLeftX = margin + (docWidth - (2 * sigWidth) - sigGap) / 2;
         const sigRightX = sigLeftX + sigWidth + sigGap;
 
         // Assinatura do Recebedor
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY); // Linha 1
+        doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY); 
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); // Linha 2 (Nome)
+        doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); 
         doc.setFontSize(9);
-        doc.setTextColor(127, 140, 141); // Cinza
-        doc.text("Recebedor (Prestador)", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" }); // Linha 3 (Papel)
+        doc.setTextColor(127, 140, 141);
+        doc.text("Recebedor (Prestador)", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" }); 
 
         // Assinatura do Pagador
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY); // Linha 1
+        doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY); 
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); // Linha 2 (Nome)
+        doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); 
         doc.setFontSize(9);
         doc.setTextColor(127, 140, 141);
-        doc.text("Pagador (Cliente)", sigRightX + sigWidth / 2, signatureY + 10, { align: "center" }); // Linha 3 (Papel)
+        doc.text("Pagador (Cliente)", sigRightX + sigWidth / 2, signatureY + 10, { align: "center" }); 
 
         // Data de Emissão (Rodapé)
         const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -593,59 +639,7 @@ function gerarPDF() {
     }
 }
 
-// Funções auxiliares para o PDF (mantidas e adaptadas para o novo estilo)
-function drawSectionHeader(doc, text, y, margin, docWidth, primaryColor, textColor) {
-    // Linha cinza clara de divisão
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, y, docWidth - margin, y);
-    y += 4; 
-    
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text(text.toUpperCase(), margin, y);
-    
-    y += 2;
-    // Linha cinza escura de ênfase
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, docWidth - margin, y);
-    doc.setLineWidth(0.2); // Reseta a espessura da linha
-    
-    return y + 3;
-}
-
-function drawInfoBlock(doc, y, margin, lineHeight, textColor, data) {
-    const labelWidth = 30; // Largura para o label, ajustada para caber mais
-    doc.setFontSize(10);
-    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-
-    data.forEach(([label, value]) => {
-        if (value && value.trim() !== "") {
-            // Verifica se a linha atual + o texto caberá na página
-            if (y + lineHeight > doc.internal.pageSize.getHeight() - 50) {
-                doc.addPage();
-                y = margin;
-                doc.setFontSize(10); // Garante o tamanho da fonte após a nova página
-            }
-
-            doc.setFont("helvetica", "bold");
-            // Posiciona o label na margem esquerda
-            doc.text(label, margin, y); 
-            
-            doc.setFont("helvetica", "normal");
-            // Quebra de texto se for muito longo, começando após o espaço do label
-            const lines = doc.splitTextToSize(value, doc.internal.pageSize.getWidth() - margin * 2 - labelWidth);
-            doc.text(lines, margin + labelWidth, y);
-            
-            y += lines.length * lineHeight; // Avança Y pelo número de linhas
-        }
-    });
-    return y;
-}
-
-
-// --- FUNÇÕES CRUD (Salvar, Carregar, Remover) --- (Sem alterações, apenas migrada)
+// --- FUNÇÕES CRUD (Salvar, Carregar, Remover) --- 
 function getFormData() {
     const data = {
         recebedorType,
@@ -749,7 +743,6 @@ function init() {
     if (salvos) {
         recibosSalvos = JSON.parse(salvos);
     }
-    // Inicializa o tipo de documento PF para ambos
     setRecebedorType('pf'); 
     setPagadorType('pf');
     
