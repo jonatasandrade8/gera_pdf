@@ -401,8 +401,7 @@ function gerarPDF() {
     try {
         // Inicializar o jsPDF
         // Configurações para um layout mais limpo e fonte padrão.
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
+        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
         
         // Constantes de Layout
         const margin = 15;
