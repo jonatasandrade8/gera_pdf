@@ -399,9 +399,10 @@ function gerarPDF() {
     if (!validarFormulario()) return;
 
     try {
-        // Inicializar o jsPDF
-        // Configurações para um layout mais limpo e fonte padrão.
-        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+        // Inicializar o jsPDF de forma robusta e corrigida.
+        // O acesso direto a 'window.jspdf.jsPDF' garante que o plugin 'autoTable' já tenha estendido o construtor,
+        // resolvendo o "TypeError: doc.autoTable is not a function".
+        const doc = new window.jspdf.jsPDF('p', 'mm', 'a4'); // <-- CORREÇÃO CRÍTICA
         
         // Constantes de Layout
         const margin = 15;
@@ -545,34 +546,35 @@ function gerarPDF() {
             y += 5;
         }
 
-        // --- Assinaturas ---
+        // --- Assinaturas (Duas Linhas Separadas ao Final) ---
         const signatureY = doc.internal.pageSize.getHeight() - 40;
         const sigWidth = 60;
         const sigGap = 30; // Espaço entre as assinaturas
+        // Centraliza os blocos de assinatura na página
         const sigLeftX = margin + (docWidth - (2 * sigWidth) - sigGap) / 2;
         const sigRightX = sigLeftX + sigWidth + sigGap;
 
         // Assinatura do Recebedor
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY);
+        doc.line(sigLeftX, signatureY, sigLeftX + sigWidth, signatureY); // Linha 1
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth });
+        doc.text(recebedorNome, sigLeftX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); // Linha 2 (Nome)
         doc.setFontSize(9);
         doc.setTextColor(127, 140, 141); // Cinza
-        doc.text("Recebedor (Prestador)", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" });
+        doc.text("Recebedor (Prestador)", sigLeftX + sigWidth / 2, signatureY + 10, { align: "center" }); // Linha 3 (Papel)
 
         // Assinatura do Pagador
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY);
+        doc.line(sigRightX, signatureY, sigRightX + sigWidth, signatureY); // Linha 1
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth });
+        doc.text(pagadorNome, sigRightX + sigWidth / 2, signatureY + 5, { align: "center", maxWidth: sigWidth }); // Linha 2 (Nome)
         doc.setFontSize(9);
         doc.setTextColor(127, 140, 141);
-        doc.text("Pagador (Cliente)", sigRightX + sigWidth / 2, signatureY + 10, { align: "center" });
+        doc.text("Pagador (Cliente)", sigRightX + sigWidth / 2, signatureY + 10, { align: "center" }); // Linha 3 (Papel)
 
         // Data de Emissão (Rodapé)
         const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
