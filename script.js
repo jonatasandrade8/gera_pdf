@@ -138,19 +138,20 @@ function buscarCNPJ(tipo) {
             return res.json();
         })
         .then(data => {
-            document.getElementById(tipo + '-nome').value = data.razao_social || '';
-            document.getElementById(tipo + '-rua').value = data.logradouro || '';
-            document.getElementById(tipo + '-num').value = data.numero || '';
-            document.getElementById(tipo + '-comp').value = data.complemento || '';
-            // Atualiza o CEP formatando o valor
-            const cepValue = data.cep ? data.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '';
-            document.getElementById(tipo + '-cep').value = cepValue;
-            document.getElementById(tipo + '-cidade').value = data.municipio || '';
-            document.getElementById(tipo + '-uf').value = data.uf || '';
+            const getField = (id) => document.getElementById(tipo + id);
+            getField('-nome').value = data.razao_social || '';
+            getField('-rua').value = data.logradouro || '';
+            getField('-num').value = data.numero || '';
+            getField('-comp').value = data.complemento || '';
             
-            // Atualiza o telefone formatando o valor
+            const cepValue = data.cep ? data.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '';
+            getField('-cep').value = cepValue;
+            
+            getField('-cidade').value = data.municipio || '';
+            getField('-uf').value = data.uf || '';
+            
             const telefoneValue = data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0, 2)}) ${data.ddd_telefone_1.substring(2)}` : '';
-            document.getElementById(tipo + '-tel').value = telefoneValue;
+            getField('-tel').value = telefoneValue;
             
             atualizarPrevia();
         })
@@ -236,21 +237,24 @@ function atualizarPrevia() {
 
     const getField = (id) => document.getElementById(id).value;
 
-    const recebedorEnd = [
-        getField('recebedor-rua'),
-        getField('recebedor-num'),
-        getField('recebedor-comp'),
-        getField('recebedor-cidade'),
-        getField('recebedor-uf')
-    ].filter(Boolean).join(', ');
+    const formatarEnderecoPreview = (tipo) => {
+        const rua = getField(tipo + '-rua');
+        const num = getField(tipo + '-num');
+        const comp = getField(tipo + '-comp');
+        const cidade = getField(tipo + '-cidade');
+        const uf = getField(tipo + '-uf');
+        const cep = getField(tipo + '-cep');
 
-    const pagadorEnd = [
-        getField('pagador-rua'),
-        getField('pagador-num'),
-        getField('pagador-comp'),
-        getField('pagador-cidade'),
-        getField('pagador-uf')
-    ].filter(Boolean).join(', ');
+        return [
+            rua && num ? `${rua}, ${num}` : rua,
+            comp,
+            cidade && uf ? `${cidade}/${uf}` : cidade,
+            cep
+        ].filter(Boolean).join(', ');
+    };
+
+    const recebedorEnd = formatarEnderecoPreview('recebedor');
+    const pagadorEnd = formatarEnderecoPreview('pagador');
 
     const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
     const dataInicio = getField('periodo-inicio');
@@ -262,9 +266,22 @@ function atualizarPrevia() {
     }
 
     let html = `
+        <style>
+            .preview-header { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }
+            .preview-title { font-size: 24px; font-weight: bold; color: #2c3e50;}
+            .preview-section { margin-bottom: 20px; }
+            .preview-section h3 { background: #ecf0f1; padding: 8px; margin-bottom: 10px; border-radius: 2px; font-size: 14px; color: #34495e; border-left: 4px solid #3498db; font-weight: 600;}
+            .preview-row { display: flex; margin-bottom: 5px; font-size: 14px; }
+            .preview-label { font-weight: bold; width: 120px; color: #34495e; }
+            .preview-value { flex-grow: 1; color: #555; }
+            .services-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .services-table th, .services-table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+            .services-table th { background-color: #3498db; color: white; font-size: 13px; }
+        </style>
+
         <div class="preview-header">
             <div class="preview-title">RECIBO DE PAGAMENTO</div>
-            <div style="font-size: 14px; color: #7f8c8d;">**VALOR: ${formatarMoeda(total)}**</div>
+            <div style="font-size: 16px; color: #7f8c8d; margin-top: 5px;">VALOR: ${formatarMoeda(total)}</div>
         </div>
 
         <div class="preview-section">
@@ -320,10 +337,10 @@ function atualizarPrevia() {
                 <table class="services-table">
                     <thead>
                         <tr>
-                            <th>Descrição</th>
-                            <th style="text-align: center; width: 50px;">Qtd</th>
-                            <th style="text-align: right; width: 80px;">Preço Unit.</th>
-                            <th style="text-align: right; width: 80px;">Total</th>
+                            <th style="width: 50%;">Descrição</th>
+                            <th style="text-align: center; width: 10%;">Qtd</th>
+                            <th style="text-align: right; width: 20%;">Preço Unit.</th>
+                            <th style="text-align: right; width: 20%;">Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -332,17 +349,34 @@ function atualizarPrevia() {
                                 <td>${s.descricao || 'N/D'}</td>
                                 <td style="text-align: center;">${s.quantidade}</td>
                                 <td style="text-align: right;">${formatarMoeda(s.preco)}</td>
-                                <td style="text-align: right;">${formatarMoeda(s.quantidade * s.preco)}</td>
+                                <td style="text-align: right; font-weight: bold;">${formatarMoeda(s.quantidade * s.preco)}</td>
                             </tr>
                         `).join('')}
                         <tr style="background: #ecf0f1;">
-                            <td style="font-weight: bold; color: #2c3e50;" colspan="3">TOTAL FINAL</td>
-                            <td style="text-align: right; font-weight: bold; color: #2c3e50;">${formatarMoeda(total)}</td>
+                            <td style="font-weight: bold; color: #2c3e50; text-align: right;" colspan="3">TOTAL FINAL</td>
+                            <td style="text-align: right; font-weight: bold; color: #3498db;">${formatarMoeda(total)}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         ` : ''}
+        
+        <div style="margin-top: 70px; text-align: center; font-size: 14px;">
+            <div style="display: flex; justify-content: space-around;">
+                <div style="width: 40%; text-align: center;">
+                    <div style="border-top: 1px solid #34495e; margin: 0 auto; width: 80%; padding-top: 5px;">
+                        ${getField('recebedor-nome') || 'Nome do Recebedor'}
+                    </div>
+                    <p style="font-size: 11px; margin-top: 5px; color: #7f8c8d;">Recebedor (Prestador)</p>
+                </div>
+                <div style="width: 40%; text-align: center;">
+                    <div style="border-top: 1px solid #34495e; margin: 0 auto; width: 80%; padding-top: 5px;">
+                        ${getField('pagador-nome') || 'Nome do Pagador'}
+                    </div>
+                    <p style="font-size: 11px; margin-top: 5px; color: #7f8c8d;">Pagador (Cliente)</p>
+                </div>
+            </div>
+        </div>
     `;
 
     document.getElementById('preview').innerHTML = html;
@@ -397,13 +431,19 @@ function validarFormulario() {
     return true;
 }
 
-// --- FUNÇÃO DE GERAR PDF CORRIGIDA ---
+// --- FUNÇÃO DE GERAR PDF PROGRAMÁTICO (CORRIGIDA) ---
 function gerarPDF() {
     if (!validarFormulario()) return;
+    
+    // VERIFICAÇÃO DE SEGURANÇA PARA autoTable
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF.prototype.autoTable !== 'function') {
+        alert("Erro: O plugin jspdf-autotable não foi carregado corretamente. O PDF não pode ser gerado programaticamente. Por favor, verifique os links CDN no HTML.");
+        console.error("ERRO CRÍTICO: jspdf-autotable não encontrado.");
+        return;
+    }
 
     try {
-        // CORREÇÃO CRÍTICA: Inicialização explícita via window.jspdf.jsPDF
-        // Garante que o objeto jsPDF usado seja aquele estendido pelo jspdf-autotable.
+        // Inicialização explícita via window.jspdf.jsPDF, garantindo o escopo UMD
         const doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
         
         // Constantes de Layout
@@ -424,7 +464,7 @@ function gerarPDF() {
         const totalGeral = calcularTotal();
 
         // Endereço formatado (completo)
-        const formatarEndereco = (tipo) => {
+        const formatarEnderecoPDF = (tipo) => {
             const rua = getField(tipo + '-rua');
             const num = getField(tipo + '-num');
             const comp = getField(tipo + '-comp');
@@ -439,15 +479,15 @@ function gerarPDF() {
             return [linha1, linha2, linha3].filter(Boolean);
         };
 
-        const recebedorEnd = formatarEndereco('recebedor');
-        const pagadorEnd = formatarEndereco('pagador');
+        const recebedorEnd = formatarEnderecoPDF('recebedor');
+        const pagadorEnd = formatarEnderecoPDF('pagador');
 
         // Período
         const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
         const dataInicioInput = getField('periodo-inicio');
         const dataFimInput = getField('periodo-fim');
-        const formatarDataPDF = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
-        const textoPeriodicidade = `${periodoTipo} de ${formatarDataPDF(dataInicioInput)} a ${formatarDataPDF(dataFimInput)}`;
+        const formatarData = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
+        const textoPeriodicidade = `${periodoTipo} de ${formatarData(dataInicioInput)} a ${formatarData(dataFimInput)}`;
 
         // --- Título e Cabeçalho ---
         doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -463,7 +503,6 @@ function gerarPDF() {
 
         // Funções auxiliares para o PDF
         const drawSectionHeader = (text, currentY) => {
-            // Linha cinza clara de divisão
             doc.setDrawColor(200, 200, 200);
             doc.line(margin, currentY, docWidth - margin, currentY);
             currentY += 4; 
@@ -474,7 +513,6 @@ function gerarPDF() {
             doc.text(text.toUpperCase(), margin, currentY);
             
             currentY += 2;
-            // Linha cinza escura de ênfase
             doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
             doc.setLineWidth(0.5);
             doc.line(margin, currentY, docWidth - margin, currentY);
@@ -484,10 +522,10 @@ function gerarPDF() {
         };
 
         const drawInfoBlock = (currentY, data) => {
-            const labelWidth = 30; 
+            const labelWidth = 35; // Aumentado ligeiramente para melhor leitura
             doc.setFontSize(10);
             doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-
+            
             data.forEach(([label, value]) => {
                 if (value && value.trim() !== "") {
                     // Adiciona nova página se necessário
@@ -590,6 +628,7 @@ function gerarPDF() {
                     y = data.cursor.y; 
                 }
             });
+            y = doc.autoTable.previous.finalY; // Atualiza a posição Y após a tabela
             y += 5;
         }
 
@@ -635,7 +674,7 @@ function gerarPDF() {
 
     } catch (error) {
         console.error('Erro fatal ao gerar PDF:', error);
-        alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+        alert('Erro ao gerar PDF. Verifique o console para mais detalhes. O plugin jspdf-autotable pode não ter sido carregado corretamente.');
     }
 }
 

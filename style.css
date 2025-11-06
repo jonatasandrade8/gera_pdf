@@ -17,7 +17,7 @@ body {
 .header h1 { 
     font-size: 2.5em; 
     margin-bottom: 10px; 
-    color: #34495e; /* Azul escuro */
+    color: #34495e; 
 }
 .content { 
     display: grid; 
