@@ -1,772 +1,699 @@
-let servicos = [];
+/* script.js */
+
+// Estado inicial
 let recebedorType = 'pf';
 let pagadorType = 'pf';
-let recibosSalvos = [];
 
-// --- Funções de Formatação de Inputs (UX) ---
-function formatarCEP(input) {
-    let valor = input.value.replace(/\D/g, '');
-    if (valor.length > 5) {
-        valor = valor.replace(/^(\d{5})(\d)/, '$1-$2');
-    }
-    input.value = valor;
-}
+// Event listener para carregar recibos salvos ao iniciar
+document.addEventListener('DOMContentLoaded', () => {
+    renderizarRecibosSalvos();
+    // Define a data de hoje nos campos de data (opcional, mas útil)
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('periodo-inicio').value = hoje;
+    document.getElementById('periodo-fim').value = hoje;
+    
+    // Atualiza a prévia com "Aguardando preenchimento..."
+    atualizarPrevia();
+});
 
-function formatarTelefone(input) {
-    let valor = input.value.replace(/\D/g, '');
-    let formatado = '';
-    if (valor.length > 0) {
-        formatado = '(' + valor.substring(0, 2);
-    }
-    if (valor.length > 2) {
-        formatado += ') ' + valor.substring(2, 7);
-    }
-    if (valor.length > 7) {
-        formatado += '-' + valor.substring(7, 11);
-    }
-    input.value = formatado;
-}
+// --- CONTROLES DE TIPO (PF/PJ) ---
 
-function formatarDocumento(input) {
-    let tipo = input.id.includes('recebedor') ? recebedorType : pagadorType;
-    let valor = input.value.replace(/\D/g, '');
-
-    if (tipo === 'pf') { // CPF
-        input.maxLength = 14;
-        valor = valor.substring(0, 11);
-        if (valor.length > 9) {
-            valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d)/, '$1.$2.$3-$4');
-        } else if (valor.length > 6) {
-            valor = valor.replace(/^(\d{3})(\d{3})(\d)/, '$1.$2.$3');
-        } else if (valor.length > 3) {
-            valor = valor.replace(/^(\d{3})(\d)/, '$1.$2');
-        }
-    } else { // CNPJ
-        input.maxLength = 18;
-        valor = valor.substring(0, 14);
-        if (valor.length > 12) {
-            valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d)/, '$1.$2.$3/$4-$5');
-        } else if (valor.length > 8) {
-            valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d)/, '$1.$2.$3/$4');
-        } else if (valor.length > 5) {
-            valor = valor.replace(/^(\d{2})(\d{3})(\d)/, '$1.$2.$3');
-        } else if (valor.length > 2) {
-            valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
-        }
-    }
-    input.value = valor;
-}
-
-// --- Funções de Gerenciamento de Tipo (PF/PJ) ---
-function setRecebedorType(type) {
-    recebedorType = type;
-    document.getElementById('btn-recebedor-pf').classList.toggle('active', type === 'pf');
-    document.getElementById('btn-recebedor-pj').classList.toggle('active', type === 'pj');
+function setRecebedorType(tipo) {
+    recebedorType = tipo;
+    document.getElementById('btn-recebedor-pf').classList.toggle('active', tipo === 'pf');
+    document.getElementById('btn-recebedor-pj').classList.toggle('active', tipo === 'pj');
+    
     const labelNome = document.getElementById('label-recebedor-nome');
     const labelDoc = document.getElementById('label-recebedor-doc');
     const inputDoc = document.getElementById('recebedor-doc');
-    
-    if (type === 'pf') {
-        labelNome.textContent = 'Nome Completo *';
-        labelDoc.textContent = 'CPF *';
+
+    if (tipo === 'pf') {
+        labelNome.innerText = 'Nome Completo *';
+        labelDoc.innerText = 'CPF *';
         inputDoc.placeholder = '000.000.000-00';
     } else {
-        labelNome.textContent = 'Razão Social *';
-        labelDoc.textContent = 'CNPJ *';
-        inputDoc.placeholder = '00.000.000/0000-00';
+        labelNome.innerText = 'Razão Social *';
+        labelDoc.innerText = 'CNPJ *';
+        inputDoc.placeholder = '00.000.000/0001-00';
     }
-    formatarDocumento(inputDoc);
-    atualizarPrevia();
+    inputDoc.value = ''; // Limpa o campo ao trocar
 }
 
-function setPagadorType(type) {
-    pagadorType = type;
-    document.getElementById('btn-pagador-pf').classList.toggle('active', type === 'pf');
-    document.getElementById('btn-pagador-pj').classList.toggle('active', type === 'pj');
+function setPagadorType(tipo) {
+    pagadorType = tipo;
+    document.getElementById('btn-pagador-pf').classList.toggle('active', tipo === 'pf');
+    document.getElementById('btn-pagador-pj').classList.toggle('active', tipo === 'pj');
+    
     const labelNome = document.getElementById('label-pagador-nome');
     const labelDoc = document.getElementById('label-pagador-doc');
     const inputDoc = document.getElementById('pagador-doc');
 
-    if (type === 'pf') {
-        labelNome.textContent = 'Nome Completo';
-        labelDoc.textContent = 'CPF';
+    if (tipo === 'pf') {
+        labelNome.innerText = 'Nome Completo';
+        labelDoc.innerText = 'CPF';
         inputDoc.placeholder = '000.000.000-00';
     } else {
-        labelNome.textContent = 'Razão Social';
-        labelDoc.textContent = 'CNPJ';
-        inputDoc.placeholder = '00.000.000/0000-00';
+        labelNome.innerText = 'Razão Social';
+        labelDoc.innerText = 'CNPJ';
+        inputDoc.placeholder = '00.000.000/0001-00';
     }
-    formatarDocumento(inputDoc);
+    inputDoc.value = ''; // Limpa o campo ao trocar
+}
+
+// --- FORMATAÇÃO DE INPUTS (MÁSCARAS) ---
+
+function formatarTelefone(input) {
+    let v = input.value.replace(/\D/g, '');
+    v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+    v = v.replace(/(\d{5})(\d)/, '$1-$2');
+    v = v.replace(/(\d{4})(\d)/, '$1-$2'); // Para telefones fixos
+    input.value = v.slice(0, 15); // Limita o tamanho
     atualizarPrevia();
 }
 
-// --- Funções de Busca (API) ---
-function buscarCEP(tipo) {
-    const cepInput = document.getElementById(tipo + '-cep');
-    const cep = cepInput.value.replace(/\D/g, '');
+function formatarCEP(input) {
+    let v = input.value.replace(/\D/g, '');
+    v = v.replace(/^(\d{5})(\d)/, '$1-$2');
+    input.value = v.slice(0, 9);
+    atualizarPrevia();
+}
+
+function formatarDocumento(input) {
+    let v = input.value.replace(/\D/g, '');
+    let type = (input.id.includes('recebedor')) ? recebedorType : pagadorType;
+
+    if (type === 'pf') {
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        input.value = v.slice(0, 14);
+    } else { // pj
+        v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+        v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        v = v.replace(/(\d{4})(\d)/, '$1-$2');
+        input.value = v.slice(0, 18);
+    }
+    atualizarPrevia();
+}
+
+function formatarMoeda(input) {
+    let v = input.value.replace(/\D/g, '');
+    v = (v / 100).toFixed(2) + '';
+    v = v.replace(".", ",");
+    v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    input.value = 'R$ ' + v;
+    calcularTotal();
+    atualizarPrevia();
+}
+
+function parseMoeda(valorString) {
+    if (!valorString) return 0;
+    let v = valorString.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
+    return parseFloat(v) || 0;
+}
+
+// --- LÓGICA DE SERVIÇOS/PRODUTOS ---
+
+let servicoCount = 0;
+
+function adicionarServico() {
+    servicoCount++;
+    const list = document.getElementById('services-list');
+    
+    // Limpa a mensagem "Nenhum produto" se for o primeiro item
+    if (servicoCount === 1) {
+        list.innerHTML = '';
+    }
+    
+    const item = document.createElement('div');
+    item.className = 'service-item';
+    item.id = `service-${servicoCount}`;
+    item.innerHTML = `
+        <input type="text" placeholder="Descrição do Produto/Serviço" class="servico-desc" oninput="atualizarPrevia()">
+        <input type="number" value="1" min="1" class="servico-qtd" oninput="calcularTotal(); atualizarPrevia()">
+        <input type="text" placeholder="R$ 0,00" class="servico-valor" oninput="formatarMoeda(this)">
+        <button class="btn-remove" onclick="removerServico('service-${servicoCount}')">X</button>
+    `;
+    list.appendChild(item);
+    atualizarPrevia();
+}
+
+function removerServico(itemId) {
+    document.getElementById(itemId).remove();
+    servicoCount--;
+    
+    const list = document.getElementById('services-list');
+    if (servicoCount === 0) {
+        list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>';
+    }
+    calcularTotal();
+    atualizarPrevia();
+}
+
+function calcularTotal() {
+    let total = 0;
+    const items = document.querySelectorAll('.service-item');
+    items.forEach(item => {
+        const qtd = parseFloat(item.querySelector('.servico-qtd').value) || 0;
+        const valor = parseMoeda(item.querySelector('.servico-valor').value);
+        total += qtd * valor;
+    });
+    
+    const totalFormatado = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('total-amount').innerText = totalFormatado;
+}
+
+// --- BUSCA DE APIS EXTERNAS (CEP/CNPJ) ---
+
+// Função auxiliar para sanitizar (remover não-dígitos)
+function limparInput(valor) {
+    return valor.replace(/\D/g, '');
+}
+
+async function buscarCEP(tipo) {
+    const cep = limparInput(document.getElementById(`${tipo}-cep`).value);
     if (cep.length !== 8) return;
 
-    fetch(`https://viacep.com.br/ws/${cep}/json/`)
-        .then(res => res.json())
-        .then(data => {
-            if (!data.erro) {
-                document.getElementById(tipo + '-rua').value = data.logradouro;
-                document.getElementById(tipo + '-cidade').value = data.localidade;
-                document.getElementById(tipo + '-uf').value = data.uf;
-                document.getElementById(tipo + '-num').focus();
-                atualizarPrevia();
-            } else {
-                console.warn('CEP não encontrado!');
-            }
-        })
-        .catch(err => {
-            console.error('Erro ao buscar CEP:', err);
-        });
+    // Utilizamos a API ViaCEP. É crucial usar HTTPS.
+    const url = `https://viacep.com.br/ws/${cep}/json/`;
+    
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('CEP não encontrado');
+        const data = await response.json();
+        
+        if (data.erro) {
+            alert('CEP não encontrado.');
+            return;
+        }
+
+        document.getElementById(`${tipo}-rua`).value = data.logradouro || '';
+        document.getElementById(`${tipo}-cidade`).value = data.localidade || '';
+        document.getElementById(`${tipo}-uf`).value = data.uf || '';
+        // Foca no número, pois é o próximo campo provável
+        document.getElementById(`${tipo}-num`).focus();
+        atualizarPrevia();
+
+    } catch (error) {
+        console.error('Falha ao buscar CEP:', error);
+        alert('Não foi possível buscar o CEP. Verifique a conexão ou o valor digitado.');
+    }
 }
 
-function buscarCNPJ(tipo) {
-    const currentType = (tipo === 'recebedor') ? recebedorType : pagadorType;
-    if (currentType !== 'pj') return;
+async function buscarCNPJ(tipo) {
+    const type = (tipo === 'recebedor') ? recebedorType : pagadorType;
+    if (type !== 'pj') return; // Só busca se for PJ
 
-    const cnpjInput = document.getElementById(tipo + '-doc');
-    const cnpj = cnpjInput.value.replace(/\D/g, '');
+    const cnpj = limparInput(document.getElementById(`${tipo}-doc`).value);
     if (cnpj.length !== 14) return;
 
-    fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
-        .then(res => {
-            if (!res.ok) throw new Error('CNPJ não encontrado ou API indisponível');
-            return res.json();
-        })
-        .then(data => {
-            const getField = (id) => document.getElementById(tipo + id);
-            getField('-nome').value = data.razao_social || '';
-            getField('-rua').value = data.logradouro || '';
-            getField('-num').value = data.numero || '';
-            getField('-comp').value = data.complemento || '';
-            
-            const cepValue = data.cep ? data.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '';
-            getField('-cep').value = cepValue;
-            
-            getField('-cidade').value = data.municipio || '';
-            getField('-uf').value = data.uf || '';
-            
-            const telefoneValue = data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0, 2)}) ${data.ddd_telefone_1.substring(2)}` : '';
-            getField('-tel').value = telefoneValue;
-            
-            atualizarPrevia();
-        })
-        .catch(err => {
-            console.error('Erro ao buscar CNPJ:', err.message);
-        });
-}
+    // Utilizamos a BrasilAPI. Em produção, considere um proxy para evitar rate-limiting.
+    // Esta API é pública e pode sofrer instabilidades.
+    const url = `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`;
 
-// --- Funções de Gerenciamento de Serviços (Item do Recibo) ---
-function adicionarServico() {
-    const id = Date.now();
-    servicos.push({ id, descricao: '', quantidade: 1, preco: 0 });
-    renderizarServicos();
-    atualizarPrevia(); 
-}
+    try {
+        // Simples feedback de carregamento
+        document.getElementById(`${tipo}-nome`).value = "Buscando...";
 
-function removerServico(id) {
-    servicos = servicos.filter(s => s.id !== id);
-    renderizarServicos();
-    atualizarPrevia(); 
-}
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('CNPJ não encontrado ou API indisponível');
+        const data = await response.json();
 
-function atualizarServico(id, campo, valor) {
-    const servico = servicos.find(s => s.id === id);
-    if (servico) {
-        if (campo === 'quantidade' || campo === 'preco') {
-            servico[campo] = parseFloat(valor) || 0;
-        } else {
-            servico[campo] = valor;
-        }
-        atualizarPrevia(); 
+        document.getElementById(`${tipo}-nome`).value = data.razao_social || '';
+        document.getElementById(`${tipo}-cep`).value = data.cep ? data.cep.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2') : '';
+        document.getElementById(`${tipo}-rua`).value = data.logradouro || '';
+        document.getElementById(`${tipo}-num`).value = data.numero || '';
+        document.getElementById(`${tipo}-cidade`).value = data.municipio || '';
+        document.getElementById(`${tipo}-uf`).value = data.uf || '';
+        document.getElementById(`${tipo}-tel`).value = data.ddd_telefone_1 || '';
+        atualizarPrevia();
+
+    } catch (error) {
+        console.error('Falha ao buscar CNPJ:', error);
+        alert('Não foi possível buscar o CNPJ. Verifique o valor digitado ou a API pode estar fora do ar.');
+        document.getElementById(`${tipo}-nome`).value = ""; // Limpa o "Buscando..."
     }
 }
 
-function renderizarServicos() {
-    const lista = document.getElementById('services-list');
-    if (servicos.length === 0) {
-        lista.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>';
-        calcularTotal(); 
+
+// --- LÓGICA DE PRÉVIA (SIMPLIFICADA) ---
+
+function atualizarPrevia() {
+    // A prévia em tempo real é complexa.
+    // Por enquanto, ela recalcula o total e atualiza a prévia básica.
+    calcularTotal();
+    
+    // Simulação de prévia
+    const preview = document.getElementById('preview');
+    const recebedorNome = document.getElementById('recebedor-nome').value;
+    const pagadorNome = document.getElementById('pagador-nome').value;
+    const total = document.getElementById('total-amount').innerText;
+    
+    if (!recebedorNome && !pagadorNome && total === 'R$ 0,00') {
+        preview.innerHTML = '<p style="color: #999; text-align: center;">Aguardando preenchimento...</p>';
+    } else {
+         preview.innerHTML = `
+            <div style="width: 100%; text-align: left; padding: 15px; font-family: Arial, sans-serif;">
+                <h3 style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px;">PRÉVIA DO RECIBO</h3>
+                <p><strong>Recebedor:</strong> ${recebedorNome || '...'}</p>
+                <p><strong>Pagador:</strong> ${pagadorNome || '...'}</p>
+                <hr style="margin: 15px 0;">
+                <h2 style="text-align: right; color: #333;">Total: ${total}</h2>
+            </div>
+        `;
+    }
+}
+
+
+// --- GERENCIAMENTO DE RECIBOS (LocalStorage) ---
+
+const STORAGE_KEY = 'geradorRecibosModelos';
+
+function getRecibosSalvos() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+}
+
+function salvarRecibo() {
+    // 1. Coletar dados do formulário
+    const formData = {
+        recebedor: {
+            tipo: recebedorType,
+            nome: document.getElementById('recebedor-nome').value,
+            doc: document.getElementById('recebedor-doc').value,
+            tel: document.getElementById('recebedor-tel').value,
+            cep: document.getElementById('recebedor-cep').value,
+            rua: document.getElementById('recebedor-rua').value,
+            num: document.getElementById('recebedor-num').value,
+            comp: document.getElementById('recebedor-comp').value,
+            cidade: document.getElementById('recebedor-cidade').value,
+            uf: document.getElementById('recebedor-uf').value,
+        },
+        pagador: {
+            tipo: pagadorType,
+            nome: document.getElementById('pagador-nome').value,
+            doc: document.getElementById('pagador-doc').value,
+            tel: document.getElementById('pagador-tel').value,
+            cep: document.getElementById('pagador-cep').value,
+            rua: document.getElementById('pagador-rua').value,
+            num: document.getElementById('pagador-num').value,
+            comp: document.getElementById('pagador-comp').value,
+            cidade: document.getElementById('pagador-cidade').value,
+            uf: document.getElementById('pagador-uf').value,
+        },
+        servicos: [],
+        periodo: {
+            tipo: document.getElementById('periodo-tipo').value,
+            inicio: document.getElementById('periodo-inicio').value,
+            fim: document.getElementById('periodo-fim').value,
+        }
+    };
+    
+    // 2. Coletar serviços
+    document.querySelectorAll('.service-item').forEach(item => {
+        formData.servicos.push({
+            desc: item.querySelector('.servico-desc').value,
+            qtd: item.querySelector('.servico-qtd').value,
+            valor: item.querySelector('.servico-valor').value,
+        });
+    });
+
+    // 3. Salvar no LocalStorage
+    // Usamos o nome do recebedor + data como "nome" do recibo
+    const nomeRecibo = formData.recebedor.nome || 'Recibo Sem Nome';
+    const dataRecibo = new Date().toLocaleDateString('pt-BR');
+    const reciboSalvo = {
+        id: Date.now(), // ID único
+        nome: `${nomeRecibo} (${dataRecibo})`,
+        data: formData
+    };
+    
+    const recibos = getRecibosSalvos();
+    recibos.push(reciboSalvo);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(recibos));
+    
+    alert('Modelo de recibo salvo com sucesso!');
+    renderizarRecibosSalvos();
+}
+
+function renderizarRecibosSalvos() {
+    const lista = document.getElementById('lista-recibos-salvos');
+    const recibos = getRecibosSalvos();
+    
+    if (recibos.length === 0) {
+        lista.innerHTML = '<p style="color: #999; text-align: center; padding: 10px;">Nenhum recibo salvo.</p>';
         return;
     }
-
-    lista.innerHTML = servicos.map(s => `
-        <div class="service-item">
-            <div class="service-field">
-                <label>Descrição:</label>
-                <input type="text" placeholder="Ex: Consultoria, Desenvolvimento, Aluguel..." value="${s.descricao}" oninput="atualizarServico(${s.id}, 'descricao', this.value)">
-            </div>
-            <div class="service-row">
-                <div class="service-field">
-                    <label>Quantidade:</label>
-                    <input type="number" min="0" step="0.01" placeholder="1" value="${s.quantidade}" oninput="atualizarServico(${s.id}, 'quantidade', this.value)">
-                </div>
-                <div class="service-field">
-                    <label>Preço UNIT (R$):</label>
-                    <input type="number" min="0" step="0.01" placeholder="0.00" value="${s.preco}" oninput="atualizarServico(${s.id}, 'preco', this.value)">
-                </div>
-                <div class="service-field">
-                    <label>&nbsp;</label>
-                    <button class="btn-remove-service" onclick="removerServico(${s.id})">✕ Remover</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
     
-    calcularTotal(); 
+    lista.innerHTML = '';
+    recibos.forEach((recibo) => {
+        const item = document.createElement('div');
+        item.className = 'saved-item';
+        item.innerHTML = `
+            <span>${recibo.nome}</span>
+            <div class="saved-item-actions">
+                <button class="btn-load" onclick="carregarRecibo(${recibo.id})">Carregar</button>
+                <button class="btn-delete" onclick="excluirRecibo(${recibo.id})">Excluir</button>
+            </div>
+        `;
+        lista.appendChild(item);
+    });
 }
 
-// --- Funções de Cálculo e Formatação ---
-function calcularTotal() {
-    const total = servicos.reduce((sum, s) => sum + (s.quantidade * s.preco), 0);
-    document.getElementById('total-amount').textContent = formatarMoeda(total);
-    return total;
+function carregarRecibo(id) {
+    const recibos = getRecibosSalvos();
+    const recibo = recibos.find(r => r.id === id);
+    if (!recibo) return;
+    
+    const formData = recibo.data;
+
+    // Carregar Recebedor
+    setRecebedorType(formData.recebedor.tipo);
+    document.getElementById('recebedor-nome').value = formData.recebedor.nome;
+    document.getElementById('recebedor-doc').value = formData.recebedor.doc;
+    document.getElementById('recebedor-tel').value = formData.recebedor.tel;
+    document.getElementById('recebedor-cep').value = formData.recebedor.cep;
+    document.getElementById('recebedor-rua').value = formData.recebedor.rua;
+    document.getElementById('recebedor-num').value = formData.recebedor.num;
+    document.getElementById('recebedor-comp').value = formData.recebedor.comp;
+    document.getElementById('recebedor-cidade').value = formData.recebedor.cidade;
+    document.getElementById('recebedor-uf').value = formData.recebedor.uf;
+
+    // Carregar Pagador
+    setPagadorType(formData.pagador.tipo);
+    document.getElementById('pagador-nome').value = formData.pagador.nome;
+    document.getElementById('pagador-doc').value = formData.pagador.doc;
+    document.getElementById('pagador-tel').value = formData.pagador.tel;
+    document.getElementById('pagador-cep').value = formData.pagador.cep;
+    document.getElementById('pagador-rua').value = formData.pagador.rua;
+    document.getElementById('pagador-num').value = formData.pagador.num;
+    document.getElementById('pagador-comp').value = formData.pagador.comp;
+    document.getElementById('pagador-cidade').value = formData.pagador.cidade;
+    document.getElementById('pagador-uf').value = formData.pagador.uf;
+
+    // Carregar Período
+    document.getElementById('periodo-tipo').value = formData.periodo.tipo;
+    document.getElementById('periodo-inicio').value = formData.periodo.inicio;
+    document.getElementById('periodo-fim').value = formData.periodo.fim;
+
+    // Carregar Serviços
+    const list = document.getElementById('services-list');
+    list.innerHTML = '';
+    servicoCount = 0;
+    formData.servicos.forEach(servico => {
+        adicionarServico(); // Cria um novo item
+        const ultimoItem = list.lastChild;
+        ultimoItem.querySelector('.servico-desc').value = servico.desc;
+        ultimoItem.querySelector('.servico-qtd').value = servico.qtd;
+        ultimoItem.querySelector('.servico-valor').value = servico.valor; // O formatador será chamado no oninput se quisermos
+    });
+    
+    calcularTotal();
+    atualizarPrevia();
+    alert('Modelo carregado!');
 }
 
-function formatarMoeda(valor) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+function excluirRecibo(id) {
+    if (!confirm('Tem certeza que deseja excluir este modelo?')) return;
+    
+    let recibos = getRecibosSalvos();
+    recibos = recibos.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(recibos));
+    renderizarRecibosSalvos();
 }
 
-// --- Funções de Atualização da UI (Preview) ---
-function atualizarPrevia() {
-    const total = calcularTotal();
 
-    const getField = (id) => document.getElementById(id).value;
+// --- GERAÇÃO DE PDF (PDFMake) ---
 
-    const formatarEnderecoPreview = (tipo) => {
-        const rua = getField(tipo + '-rua');
-        const num = getField(tipo + '-num');
-        const comp = getField(tipo + '-comp');
-        const cidade = getField(tipo + '-cidade');
-        const uf = getField(tipo + '-uf');
-        const cep = getField(tipo + '-cep');
-
-        return [
-            rua && num ? `${rua}, ${num}` : rua,
-            comp,
-            cidade && uf ? `${cidade}/${uf}` : cidade,
-            cep
-        ].filter(Boolean).join(', ');
-    };
-
-    const recebedorEnd = formatarEnderecoPreview('recebedor');
-    const pagadorEnd = formatarEnderecoPreview('pagador');
-
-    const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-    const dataInicio = getField('periodo-inicio');
-    const dataFim = getField('periodo-fim');
-    let textoPeriodo = '';
-    if (dataInicio && dataFim) {
-        const formatarData = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
-        textoPeriodo = `${periodoTipo} de ${formatarData(dataInicio)} a ${formatarData(dataFim)}`;
-    }
-
-    let html = `
-        <style>
-            .preview-header { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }
-            .preview-title { font-size: 24px; font-weight: bold; color: #2c3e50;}
-            .preview-section { margin-bottom: 20px; }
-            .preview-section h3 { background: #ecf0f1; padding: 8px; margin-bottom: 10px; border-radius: 2px; font-size: 14px; color: #34495e; border-left: 4px solid #3498db; font-weight: 600;}
-            .preview-row { display: flex; margin-bottom: 5px; font-size: 14px; }
-            .preview-label { font-weight: bold; width: 120px; color: #34495e; }
-            .preview-value { flex-grow: 1; color: #555; }
-            .services-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .services-table th, .services-table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-            .services-table th { background-color: #3498db; color: white; font-size: 13px; }
-        </style>
-
-        <div class="preview-header">
-            <div class="preview-title">RECIBO DE PAGAMENTO</div>
-            <div style="font-size: 16px; color: #7f8c8d; margin-top: 5px;">VALOR: ${formatarMoeda(total)}</div>
-        </div>
-
-        <div class="preview-section">
-            <h3>RECEBEDOR (Prestador de Serviço)</h3>
-            <div class="preview-content">
-                <div class="preview-row">
-                    <div class="preview-label">${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:</div>
-                    <div class="preview-value">${getField('recebedor-nome') || '—'}</div>
-                </div>
-                <div class="preview-row">
-                    <div class="preview-label">${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:</div>
-                    <div class="preview-value">${getField('recebedor-doc') || '—'}</div>
-                </div>
-                ${recebedorEnd ? `<div class="preview-row"><div class="preview-label">Endereço:</div><div class="preview-value">${recebedorEnd}</div></div>` : ''}
-                <div class="preview-row">
-                    <div class="preview-label">Telefone:</div>
-                    <div class="preview-value">${getField('recebedor-tel') || '—'}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="preview-section">
-            <h3>PAGADOR (Cliente)</h3>
-            <div class="preview-content">
-                <div class="preview-row">
-                    <div class="preview-label">${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:</div>
-                    <div class="preview-value">${getField('pagador-nome') || '—'}</div>
-                </div>
-                ${getField('pagador-doc') ? `
-                    <div class="preview-row">
-                        <div class="preview-label">${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:</div>
-                        <div class="preview-value">${getField('pagador-doc')}</div>
-                    </div>
-                ` : ''}
-                ${pagadorEnd ? `<div class="preview-row"><div class="preview-label">Endereço:</div><div class="preview-value">${pagadorEnd}</div></div>` : ''}
-            </div>
-        </div>
-
-        <div class="preview-section">
-            <h3>PERÍODO DA PRESTAÇÃO</h3>
-            <div class="preview-content">
-                <div class="preview-row">
-                    <div class="preview-label">Referente a:</div>
-                    <div class="preview-value">${textoPeriodo || '—'}</div>
-                </div>
-            </div>
-        </div>
-
-
-        ${servicos.length > 0 ? `
-            <div class="preview-section">
-                <h3>DISCRIMINAÇÃO DOS SERVIÇOS/PRODUTOS</h3>
-                <table class="services-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 50%;">Descrição</th>
-                            <th style="text-align: center; width: 10%;">Qtd</th>
-                            <th style="text-align: right; width: 20%;">Preço Unit.</th>
-                            <th style="text-align: right; width: 20%;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${servicos.map(s => `
-                            <tr>
-                                <td>${s.descricao || 'N/D'}</td>
-                                <td style="text-align: center;">${s.quantidade}</td>
-                                <td style="text-align: right;">${formatarMoeda(s.preco)}</td>
-                            <td style="text-align: right; font-weight: bold;">${formatarMoeda(s.quantidade * s.preco)}</td>
-                            </tr>
-                        `).join('')}
-                        <tr style="background: #ecf0f1;">
-                            <td style="font-weight: bold; color: #2c3e50; text-align: right;" colspan="3">TOTAL FINAL</td>
-                            <td style="text-align: right; font-weight: bold; color: #3498db;">${formatarMoeda(total)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        ` : ''}
-        
-        <div style="margin-top: 70px; text-align: center; font-size: 14px;">
-            <div style="display: flex; justify-content: space-around;">
-                <div style="width: 40%; text-align: center;">
-                    <div style="border-top: 1px solid #34495e; margin: 0 auto; width: 80%; padding-top: 5px;">
-                        ${getField('recebedor-nome') || 'Nome do Recebedor'}
-                    </div>
-                    <p style="font-size: 11px; margin-top: 5px; color: #7f8c8d;">Recebedor (Prestador)</p>
-                </div>
-                <div style="width: 40%; text-align: center;">
-                    <div style="border-top: 1px solid #34495e; margin: 0 auto; width: 80%; padding-top: 5px;">
-                        ${getField('pagador-nome') || 'Nome do Pagador'}
-                    </div>
-                    <p style="font-size: 11px; margin-top: 5px; color: #7f8c8d;">Pagador (Cliente)</p>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.getElementById('preview').innerHTML = html;
-}
-
-// --- Funções de Validação ---
-function validarFormulario() {
-    const camposRecebedor = [
-        'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
-        'recebedor-rua', 'recebedor-num', 'recebedor-cidade', 'recebedor-uf'
+// Validação de campos obrigatórios
+function validarCampos() {
+    const camposObrigatorios = [
+        'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep', 
+        'recebedor-rua', 'recebedor-num', 'recebedor-cidade', 'recebedor-uf',
+        'periodo-inicio', 'periodo-fim'
     ];
+    
+    let erros = [];
+    camposObrigatorios.forEach(id => {
+        const input = document.getElementById(id);
+        if (!input.value) {
+            erros.push(input.previousElementSibling.innerText.replace('*', '')); // Pega o label
+            input.style.borderColor = '#e74c3c'; // Destaca o campo
+        } else {
+            input.style.borderColor = '#ccc';
+        }
+    });
+    
+    if (servicoCount === 0) {
+        erros.push('Adicione pelo menos um Produto/Serviço');
+    }
 
-    for (let campo of camposRecebedor) {
-        const el = document.getElementById(campo);
-        if (!el.value.trim()) {
-            alert(`O campo "${el.previousElementSibling.textContent.replace('*', '').trim()}" do RECEBEDOR é obrigatório.`);
-            el.focus();
-            return false;
-        }
-    }
-    
-    const camposPeriodo = ['periodo-inicio', 'periodo-fim'];
-     for (let campo of camposPeriodo) {
-        const el = document.getElementById(campo);
-        if (!el.value) {
-            alert(`O campo "${el.previousElementSibling.textContent.replace('*', '').trim()}" é obrigatório.`);
-            el.focus();
-            return false;
-        }
-    }
-    
-    const inicio = new Date(document.getElementById('periodo-inicio').value);
-    const fim = new Date(document.getElementById('periodo-fim').value);
-    if (fim < inicio) {
-        alert('A data de término não pode ser anterior à data de início.');
+    if (erros.length > 0) {
+        alert('Por favor, preencha os seguintes campos obrigatórios:\n- ' + erros.join('\n- '));
         return false;
     }
-
-    if (servicos.length === 0) {
-        alert('Adicione pelo menos um produto ou serviço.');
-        return false;
-    }
-
-    for (let i = 0; i < servicos.length; i++) {
-        const s = servicos[i];
-        if (!s.descricao.trim() || s.quantidade <= 0 || s.preco <= 0) {
-            alert(`O serviço #${i + 1} está incompleto. Todos os serviços devem ter descrição, quantidade > 0 e preço > 0.`);
-            return false;
-        }
-    }
-
     return true;
 }
 
-// --- FUNÇÃO DE GERAR PDF COM PDFMAKE (CORRIGIDA A FONTE) ---
+// Função auxiliar para formatar data (dd/mm/aaaa)
+function formatarDataExtenso(dataStr) {
+    if (!dataStr) return 'Data não informada';
+    const [ano, mes, dia] = dataStr.split('-');
+    const data = new Date(ano, mes - 1, dia); // Mês é base 0
+    return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+}
+
 function gerarPDF() {
-    if (!validarFormulario()) return;
-    
-    // Verificação de segurança para o PDFMake
-    if (typeof pdfMake === 'undefined' || typeof pdfMake.vfs === 'undefined') {
-        alert("Erro: O PDFMake ou as fontes não foram carregadas corretamente. O PDF não pode ser gerado.");
-        console.error("ERRO CRÍTICO: PDFMake não encontrado.");
+    if (!validarCampos()) {
         return;
     }
 
-    const getField = (id) => document.getElementById(id).value;
-    const totalGeral = calcularTotal();
-
-    // Endereço formatado (completo)
-    const formatarEnderecoPDF = (tipo) => {
-        const rua = getField(tipo + '-rua');
-        const num = getField(tipo + '-num');
-        const comp = getField(tipo + '-comp');
-        const cidade = getField(tipo + '-cidade');
-        const uf = getField(tipo + '-uf');
-        const cep = getField(tipo + '-cep');
-
-        const linhas = [];
-        if (rua && num) linhas.push({ text: `${rua}, ${num}` });
-        if (comp) linhas.push({ text: `Compl.: ${comp}` });
-        if (cidade && uf) linhas.push({ text: `${cidade}/${uf}`, margin: [0, 2, 0, 0] });
-        if (cep) linhas.push({ text: `CEP: ${cep}` });
-        
-        return linhas.length > 0 ? linhas : [{ text: 'N/A' }];
+    // 1. Coletar todos os dados
+    const recebedor = {
+        nome: document.getElementById('recebedor-nome').value,
+        doc: document.getElementById('recebedor-doc').value + (recebedorType === 'pf' ? ' (CPF)' : ' (CNPJ)'),
+        tel: document.getElementById('recebedor-tel').value,
+        rua: document.getElementById('recebedor-rua').value,
+        num: document.getElementById('recebedor-num').value,
+        comp: document.getElementById('recebedor-comp').value,
+        cidade: document.getElementById('recebedor-cidade').value,
+        uf: document.getElementById('recebedor-uf').value,
+        cep: document.getElementById('recebedor-cep').value,
     };
+    
+    const pagador = {
+        nome: document.getElementById('pagador-nome').value || 'Não informado',
+        doc: (document.getElementById('pagador-doc').value || 'Não informado') + (pagadorType === 'pf' ? ' (CPF)' : ' (CNPJ)'),
+        tel: document.getElementById('pagador-tel').value || 'Não informado',
+        rua: document.getElementById('pagador-rua').value,
+        num: document.getElementById('pagador-num').value,
+        comp: document.getElementById('pagador-comp').value,
+        cidade: document.getElementById('pagador-cidade').value,
+        uf: document.getElementById('pagador-uf').value,
+        cep: document.getElementById('pagador-cep').value,
+    };
+    
+    const periodoTipo = document.getElementById('periodo-tipo').value;
+    const periodoInicio = formatarDataExtenso(document.getElementById('periodo-inicio').value);
+    const periodoFim = formatarDataExtenso(document.getElementById('periodo-fim').value);
+    
+    const total = document.getElementById('total-amount').innerText;
 
-    const recebedorEnd = formatarEnderecoPDF('recebedor');
-    const pagadorEnd = formatarEnderecoPDF('pagador');
-
-    // Período
-    const periodoTipo = document.getElementById('periodo-tipo').options[document.getElementById('periodo-tipo').selectedIndex].text;
-    const dataInicioInput = getField('periodo-inicio');
-    const dataFimInput = getField('periodo-fim');
-    const formatarData = (data) => new Date(data + 'T03:00:00').toLocaleDateString('pt-BR');
-    const textoPeriodicidade = `${periodoTipo} de ${formatarData(dataInicioInput)} a ${formatarData(dataFimInput)}`;
-
-    // --- Tabela de Serviços (Document Definition) ---
-    const tableBody = [
-        [{ text: 'Descrição', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'left' }, 
-         { text: 'Qtd', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'center' }, 
-         { text: 'Preço Unit.', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'right' }, 
-         { text: 'Total', bold: true, fillColor: '#34495e', color: '#FFFFFF', alignment: 'right' }]
+    // 2. Montar Tabela de Serviços
+    const corpoTabela = [
+        [{text: 'Descrição', style: 'tableHeader'}, {text: 'Qtd.', style: 'tableHeader'}, {text: 'Valor Unit.', style: 'tableHeader'}, {text: 'Subtotal', style: 'tableHeader'}]
     ];
-
-    servicos.forEach(s => {
-        tableBody.push([
-            { text: s.descricao || 'N/D', alignment: 'left' },
-            { text: s.quantidade.toString(), alignment: 'center' },
-            { text: formatarMoeda(s.preco), alignment: 'right' },
-            { text: formatarMoeda(s.quantidade * s.preco), alignment: 'right', bold: true }
+    
+    document.querySelectorAll('.service-item').forEach(item => {
+        const desc = item.querySelector('.servico-desc').value || 'Item não descrito';
+        const qtd = parseFloat(item.querySelector('.servico-qtd').value) || 0;
+        const valorUnitStr = item.querySelector('.servico-valor').value;
+        const valorUnit = parseMoeda(valorUnitStr);
+        const subtotal = (qtd * valorUnit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        
+        corpoTabela.push([
+            desc,
+            qtd.toString(),
+            valorUnit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            { text: subtotal, alignment: 'right' }
         ]);
     });
 
-    // Linha do Total
-    tableBody.push([
-        { text: 'TOTAL FINAL', colSpan: 3, bold: true, alignment: 'right', fillColor: '#ecf0f1' },
-        {},
-        {},
-        { text: formatarMoeda(totalGeral), alignment: 'right', bold: true, fillColor: '#ecf0f1', color: '#3498db' }
-    ]);
-
-
-    // --- Document Definition (Estrutura do PDF) ---
+    // 3. Montar Definição do Documento (docDefinition)
     const docDefinition = {
         pageSize: 'A4',
-        pageMargins: [ 40, 40, 40, 40 ],
-        defaultStyle: {
-            // CORREÇÃO: Usando 'Roboto', a fonte padrão embutida no vfs_fonts.js
-            font: 'Roboto' 
+        pageMargins: [40, 60, 40, 60], // [left, top, right, bottom]
+
+        // Cabeçalho
+        header: {
+            text: 'RECIBO DE PRESTAÇÃO DE SERVIÇOS',
+            style: 'header',
+            alignment: 'center',
+            margin: [0, 20, 0, 20] // Margem [left, top, right, bottom]
         },
+
+        // Rodapé (Número da página)
+        footer: function(currentPage, pageCount) {
+            return {
+                text: `Página ${currentPage.toString()} de ${pageCount}`,
+                alignment: 'center',
+                style: 'footer'
+            };
+        },
+
+        // Conteúdo Principal
         content: [
-            // Título
-            { text: 'R E C I B O', fontSize: 32, bold: true, alignment: 'center', color: '#34495e' },
-            { text: 'DE PAGAMENTO', fontSize: 18, alignment: 'center', color: '#7f8c8d', margin: [0, 5, 0, 10] },
-            { text: `VALOR TOTAL: ${formatarMoeda(totalGeral)}`, fontSize: 16, bold: true, alignment: 'center', color: '#2ecc71', margin: [0, 0, 0, 20] },
-
-            // Linha Separadora
-            { canvas: [ { type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#3498db' } ], margin: [0, 0, 0, 15] },
-
-            // --- Bloco Recebedor ---
-            { text: 'RECEBEDOR (Prestador de Serviço)', style: 'sectionHeader' },
+            // Seção de Informações
             {
                 columns: [
-                    { width: 100, stack: [
-                        { text: `${recebedorType === 'pf' ? 'Nome' : 'Razão Social'}:`, style: 'label' },
-                        { text: `${recebedorType === 'pf' ? 'CPF' : 'CNPJ'}:`, style: 'label' },
-                        { text: 'Telefone:', style: 'label' },
-                        { text: 'Endereço:', style: 'label', margin: [0, 5, 0, 0] },
-                    ]},
-                    { width: '*', stack: [
-                        { text: getField('recebedor-nome') || '—', style: 'value' },
-                        { text: getField('recebedor-doc') || '—', style: 'value' },
-                        { text: getField('recebedor-tel') || '—', style: 'value' },
-                        { stack: recebedorEnd, margin: [0, 5, 0, 0] }
-                    ]}
+                    // Coluna do Recebedor (Prestador)
+                    {
+                        width: '50%',
+                        text: [
+                            { text: 'RECEBEDOR (PRESTADOR)\n', style: 'subheader' },
+                            { text: `${recebedor.nome}\n` },
+                            { text: `Doc.: ${recebedor.doc}\n` },
+                            { text: `Tel.: ${recebedor.tel}\n\n` },
+                            { text: `Endereço:\n`, bold: true },
+                            { text: `${recebedor.rua}, ${recebedor.num} ${recebedor.comp ? '(' + recebedor.comp + ')' : ''}\n` },
+                            { text: `${recebedor.cidade} - ${recebedor.uf}\n` },
+                            { text: `CEP: ${recebedor.cep}` }
+                        ],
+                        style: 'infoBox'
+                    },
+                    // Coluna do Pagador (Cliente)
+                    {
+                        width: '50%',
+                        text: [
+                            { text: 'PAGADOR (CLIENTE)\n', style: 'subheader' },
+                            { text: `${pagador.nome}\n` },
+                            { text: `Doc.: ${pagador.doc}\n` },
+                            { text: `Tel.: ${pagador.tel}\n\n` },
+                            { text: `Endereço:\n`, bold: true },
+                            { text: `${pagador.rua || '...'}, ${pagador.num || '...'} ${pagador.comp ? '(' + pagador.comp + ')' : ''}\n` },
+                            { text: `${pagador.cidade || '...'} - ${pagador.uf || '...'}\n` },
+                            { text: `CEP: ${pagador.cep || '...'}` }
+                        ],
+                        style: 'infoBox'
+                    }
                 ],
-                columnGap: 10,
-                margin: [0, 0, 0, 15]
-            },
-
-            // --- Bloco Pagador ---
-            { text: 'PAGADOR (Cliente)', style: 'sectionHeader' },
-            {
-                columns: [
-                    { width: 100, stack: [
-                        { text: `${pagadorType === 'pf' ? 'Nome' : 'Razão Social'}:`, style: 'label' },
-                        { text: `${pagadorType === 'pf' ? 'CPF' : 'CNPJ'}:`, style: 'label' },
-                        { text: 'Endereço:', style: 'label', margin: [0, 5, 0, 0] },
-                    ]},
-                    { width: '*', stack: [
-                        { text: getField('pagador-nome') || '—', style: 'value' },
-                        { text: getField('pagador-doc') || '—', style: 'value' },
-                        { stack: pagadorEnd, margin: [0, 5, 0, 0] }
-                    ]}
-                ],
-                columnGap: 10,
-                margin: [0, 0, 0, 15]
+                columnGap: 20
             },
             
-            // --- Bloco Período ---
-            { text: 'PERÍODO DE PRESTAÇÃO', style: 'sectionHeader' },
+            // Período de Prestação
             {
-                columns: [
-                    { width: 100, text: 'Referente a:', style: 'label' },
-                    { width: '*', text: textoPeriodicidade, style: 'value' }
+                text: [
+                    {text: 'Período da Prestação (Referente a ' + periodoTipo + '):\n', style: 'subheader', margin: [0, 20, 0, 5]},
+                    {text: `De ${periodoInicio} até ${periodoFim}`, alignment: 'center'}
                 ],
-                margin: [0, 0, 0, 20]
+                margin: [0, 10, 0, 10]
             },
 
-            // --- Tabela de Serviços ---
-            { text: 'DISCRIMINAÇÃO DOS SERVIÇOS/PRODUTOS', style: 'sectionHeader' },
+            // Tabela de Serviços
             {
-                style: 'itemsTable',
+                text: 'ITENS/SERVIÇOS PRESTADOS',
+                style: 'subheader',
+                margin: [0, 15, 0, 5]
+            },
+            {
                 table: {
                     headerRows: 1,
-                    // Definição das Larguras (Proporcional)
-                    widths: ['*', 40, 70, 70], 
-                    body: tableBody
+                    widths: ['*', 'auto', 'auto', 'auto'], // '*' usa o espaço restante
+                    body: corpoTabela
                 },
-                layout: {
-                    fillColor: function (rowIndex, node, columnIndex) {
-                        return (rowIndex % 2 === 0) ? '#f2f2f2' : null;
-                    },
-                    hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0.5,
-                    vLineWidth: (i) => 0,
-                    hLineColor: (i) => (i === 1 || i === node.table.body.length) ? '#3498db' : '#bbbbbb',
-                    paddingLeft: (i) => 10,
-                    paddingRight: (i, node) => 10,
-                    paddingTop: (i) => 5,
-                    paddingBottom: (i) => 5,
-                }
+                layout: 'lightHorizontalLines' // Estilo da tabela
+            },
+            
+            // Total
+            {
+                text: `TOTAL: ${total}`,
+                style: 'total',
+                alignment: 'right',
+                margin: [0, 10, 0, 30]
             },
 
-            // --- Assinaturas ---
-            { 
-                text: 'E, para clareza e validade, o presente recibo é assinado abaixo:', 
-                alignment: 'center', 
-                margin: [0, 50, 0, 20],
-                fontSize: 10
+            // Texto de Confirmação
+            {
+                text: [
+                    'Declaro que recebi da parte pagadora identificada acima, a importância de ',
+                    { text: total, bold: true },
+                    ' referente aos produtos/serviços detalhados neste documento. Este recibo quita integralmente os valores descritos.'
+                ],
+                style: 'paragraph',
+                alignment: 'justify',
+                margin: [0, 20, 0, 20]
+            },
+
+            // Data e Assinatura
+            {
+                text: `${recebedor.cidade}, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.`,
+                alignment: 'center',
+                margin: [0, 30, 0, 30]
             },
             {
-                columns: [
-                    {
-                        width: '50%',
-                        stack: [
-                            { canvas: [ { type: 'line', x1: 50, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: '#34495e' } ] },
-                            { text: getField('recebedor-nome') || 'Nome do Recebedor', alignment: 'center', fontSize: 10, margin: [0, 5, 0, 0] },
-                            { text: 'Recebedor (Prestador)', alignment: 'center', fontSize: 8, color: '#7f8c8d' }
-                        ]
-                    },
-                    {
-                        width: '50%',
-                        stack: [
-                            { canvas: [ { type: 'line', x1: 50, y1: 0, x2: 200, y2: 0, lineWidth: 1, lineColor: '#34495e' } ] },
-                            { text: getField('pagador-nome') || 'Nome do Pagador', alignment: 'center', fontSize: 10, margin: [0, 5, 0, 0] },
-                            { text: 'Pagador (Cliente)', alignment: 'center', fontSize: 8, color: '#7f8c8d' }
-                        ]
-                    }
-                ]
+                text: '________________________________________',
+                alignment: 'center',
+                margin: [0, 20, 0, 5]
+            },
+            {
+                text: recebedor.nome,
+                alignment: 'center'
+            },
+            {
+                text: recebedor.doc,
+                alignment: 'center',
+                style: 'assinaturaDoc'
             }
         ],
 
         // Estilos
         styles: {
-            sectionHeader: {
-                fontSize: 12,
+            header: {
+                fontSize: 18,
+                bold: true,
+                color: '#2c3e50'
+            },
+            subheader: {
+                fontSize: 14,
                 bold: true,
                 color: '#34495e',
-                fillColor: '#ecf0f1',
-                decoration: 'underline',
-                decorationColor: '#3498db',
                 margin: [0, 10, 0, 5]
             },
-            label: {
-                bold: true,
+            infoBox: {
                 fontSize: 10,
-                color: '#34495e'
+                lineHeight: 1.3
             },
-            value: {
-                fontSize: 10,
+            tableHeader: {
+                bold: true,
+                fontSize: 11,
+                color: '#FFFFFF',
+                fillColor: '#34495e',
+                alignment: 'left'
+            },
+            total: {
+                fontSize: 16,
+                bold: true,
+                color: '#2c3e50'
+            },
+            paragraph: {
+                fontSize: 11,
+                lineHeight: 1.4
+            },
+            assinaturaDoc: {
+                fontSize: 9,
                 color: '#555'
             },
-            itemsTable: {
-                margin: [0, 5, 0, 15]
+            footer: {
+                fontSize: 9,
+                color: '#999'
             }
+        },
+        
+        defaultStyle: {
+            font: 'Roboto' // PDFMake usa Roboto por padrão (vfs_fonts.js)
         }
     };
 
-    const recebedorNome = getField('recebedor-nome');
-    const fileName = `recibo_${recebedorNome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
-
-    pdfMake.createPdf(docDefinition).download(fileName);
+    // 4. Gerar o PDF
+    pdfMake.createPdf(docDefinition).download(`Recibo_${recebedor.nome.split(' ')[0]}_${periodoFim.replace(/\//g, '-')}.pdf`);
 }
-
-// --- FUNÇÕES CRUD (Salvar, Carregar, Remover) --- 
-function getFormData() {
-    const data = {
-        recebedorType,
-        pagadorType,
-        servicos: [...servicos] 
-    };
-    
-    const fields = document.querySelectorAll('.form-section input, .form-section select');
-    fields.forEach(field => {
-        if (field.id) {
-            data[field.id] = field.value;
-        }
-    });
-    return data;
-}
-
-function populateForm(data) {
-    setRecebedorType(data.recebedorType || 'pf');
-    setPagadorType(data.pagadorType || 'pf');
-
-    const fields = document.querySelectorAll('.form-section input, .form-section select');
-    fields.forEach(field => {
-        if (field.id && data[field.id] !== undefined) {
-            field.value = data[field.id];
-        }
-    });
-
-    servicos = data.servicos ? [...data.servicos] : [];
-    
-    renderizarServicos();
-    atualizarPrevia();
-}
-
-function salvarRecibo() {
-    let nome = prompt('Digite um nome para este modelo de recibo (Ex: Cliente X Mensal):');
-    if (!nome || !nome.trim()) {
-        alert('Nome inválido. O recibo não foi salvo.');
-        return;
-    }
-    
-    const data = getFormData();
-    data.id = Date.now();
-    data.nome = nome.trim();
-
-    const existingIndex = recibosSalvos.findIndex(r => r.nome.toLowerCase() === data.nome.toLowerCase());
-    if (existingIndex > -1) {
-        if (!confirm('Já existe um recibo com esse nome. Deseja sobrescrevê-lo?')) {
-            return;
-        }
-        data.id = recibosSalvos[existingIndex].id; 
-        recibosSalvos[existingIndex] = data;
-    } else {
-         recibosSalvos.push(data);
-    }
-
-    localStorage.setItem('recibosGerador', JSON.stringify(recibosSalvos));
-    renderRecibosSalvos();
-    alert('Modelo de recibo salvo com sucesso!');
-}
-
-function carregarRecibo(id) {
-    const recibo = recibosSalvos.find(r => r.id === id);
-    if (recibo) {
-        if (!confirm(`Deseja carregar o recibo "${recibo.nome}"? Suas alterações atuais serão perdidas.`)) {
-            return;
-        }
-        populateForm(recibo);
-    }
-}
-
-function removerRecibo(id) {
-    const recibo = recibosSalvos.find(r => r.id === id);
-    if (recibo && confirm(`Tem certeza que deseja excluir o recibo salvo "${recibo.nome}"?`)) {
-        recibosSalvos = recibosSalvos.filter(r => r.id !== id);
-        localStorage.setItem('recibosGerador', JSON.stringify(recibosSalvos));
-        renderRecibosSalvos();
-    }
-}
-
-function renderRecibosSalvos() {
-    const listaDiv = document.getElementById('lista-recibos-salvos');
-    if (recibosSalvos.length === 0) {
-        listaDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 10px;">Nenhum recibo salvo.</p>';
-        return;
-    }
-
-    listaDiv.innerHTML = recibosSalvos.map(r => `
-        <div class="saved-item">
-            <span class="saved-item-name">${r.nome}</span>
-            <div class="saved-item-actions">
-                <button class="btn btn-load" onclick="carregarRecibo(${r.id})">Carregar</button>
-                <button class="btn btn-delete" onclick="removerRecibo(${r.id})">Remover</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// --- Inicialização ---
-function init() {
-    // CORREÇÃO: Removemos a configuração manual de 'Helvetica' para usar 'Roboto',
-    // a fonte padrão embutida no vfs_fonts.js. Apenas garantimos que o vfs está disponível.
-    if (typeof pdfMake !== 'undefined' && typeof vfs_fonts !== 'undefined') {
-         Object.assign(pdfMake.vfs, vfs_fonts.pdfMake.vfs);
-    }
-
-    const salvos = localStorage.getItem('recibosGerador');
-    if (salvos) {
-        recibosSalvos = JSON.parse(salvos);
-    }
-    setRecebedorType('pf'); 
-    setPagadorType('pf');
-    
-    renderRecibosSalvos();
-    renderizarServicos();
-    atualizarPrevia();
-}
-
-window.onload = init;

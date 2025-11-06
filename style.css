@@ -1,239 +1,303 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    background: #f0f2f5; 
-    min-height: 100vh; 
-    padding: 20px; 
-}
-.container { 
-    max-width: 1200px; 
-    margin: 0 auto; 
-}
-.header { 
-    text-align: center; 
-    color: #333; 
-    margin-bottom: 30px; 
-}
-.header h1 { 
-    font-size: 2.5em; 
-    margin-bottom: 10px; 
-    color: #34495e; 
-}
-.content { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr; 
-    gap: 30px; 
-}
-.form-section { 
-    background: white; 
-    border-radius: 8px; 
-    padding: 30px; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-}
-.form-section h2 { 
-    color: #2c3e50; 
-    margin-bottom: 20px; 
-    border-bottom: 2px solid #bdc3c7; 
-    padding-bottom: 10px; 
-}
-.form-group { 
-    margin-bottom: 20px; 
-}
-label { 
-    display: block; 
-    margin-bottom: 8px; 
-    color: #34495e; 
-    font-weight: 600; 
-}
-input, select, textarea { 
-    width: 100%; 
-    padding: 12px; 
-    border: 1px solid #dcdde1; 
-    border-radius: 4px; 
-    font-size: 14px; 
-    font-family: inherit; 
-    transition: border-color 0.3s;
-}
-input:focus, select:focus, textarea:focus { 
-    outline: none; 
-    border-color: #3498db; 
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1); 
-}
-.row { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr; 
-    gap: 15px; 
-}
-.row.full { 
-    grid-template-columns: 1fr; 
-}
-.type-selector { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr; 
-    gap: 10px; 
-    margin-bottom: 15px; 
-}
-.type-btn { 
-    padding: 12px; 
-    border: 1px solid #dcdde1; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    transition: all 0.3s; 
-    background: #ecf0f1; 
-    font-weight: 500; 
-    color: #2c3e50;
-}
-.type-btn.active { 
-    border-color: #3498db; 
-    background: #3498db; 
-    color: white; 
-}
-.services-list { 
-    background: #f9f9f9; 
-    border-radius: 4px; 
-    padding: 15px; 
-    margin-bottom: 20px; 
-    max-height: 400px; 
-    overflow-y: auto; 
-    border: 1px solid #e0e0e0;
-}
-.service-item { 
-    background: white; 
-    padding: 15px; 
-    border-radius: 4px; 
-    margin-bottom: 15px; 
-    border-left: 4px solid #3498db; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-.service-field label { 
-    display: block; 
-    margin-bottom: 4px; 
-    color: #2c3e50; 
-    font-weight: 500; 
-    font-size: 12px; 
-}
-.service-row { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr 1fr 60px; 
-    gap: 10px; 
-    align-items: flex-end; 
-}
-.btn-remove-service { 
-    background: #e74c3c; 
-    color: white; 
-    border: none; 
-    padding: 8px 10px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-size: 11px; 
-    height: 38px; 
-    width: 100%; 
-}
-.btn { 
-    padding: 14px 28px; 
-    border: none; 
-    border-radius: 4px; 
-    font-size: 16px; 
-    font-weight: 600; 
-    cursor: pointer; 
-    transition: all 0.3s; 
-}
-.btn-primary { 
-    background: #3498db; 
-    color: white; 
-    width: 100%; 
-}
-.btn-secondary { 
-    background: #2ecc71; 
-    color: white; 
-    width: 100%; 
-    margin-top: 20px; 
-}
-.total-box { 
-    background: #f5f5f5; 
-    color: #2c3e50; 
-    padding: 15px; 
-    border-radius: 4px; 
-    text-align: center; 
-    font-size: 16px; 
-    font-weight: 600; 
-    margin-top: 20px; 
-    border: 1px solid #dcdde1;
-}
-.total-amount { 
-    font-size: 28px; 
-    margin-top: 5px; 
-    color: #3498db;
-}
-.document-preview { 
-    background: white; 
-    border-radius: 8px; 
-    padding: 30px; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-    max-height: 700px; 
-    overflow-y: auto; 
-    border: 1px solid #dcdde1;
-}
-/* Estilos para o Conteúdo do Preview - PDF */
-.preview-header { 
-    text-align: center; 
-    border-bottom: 2px solid #3498db; 
-    padding-bottom: 15px; 
-    margin-bottom: 20px; 
-}
-.preview-title { 
-    font-size: 28px; 
-    font-weight: bold; 
-    color: #2c3e50;
-}
-.preview-section h3 { 
-    background: #ecf0f1; 
-    padding: 8px; 
-    margin-bottom: 10px; 
-    border-radius: 2px; 
-    font-size: 14px; 
-    color: #34495e; 
-    border-left: 4px solid #3498db; 
-    font-weight: 600;
-}
-.services-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 14px; 
-}
-.services-table th { 
-    background: #3498db; 
-    color: white;
-    padding: 10px; 
-    text-align: left; 
-    border-bottom: 2px solid #2c3e50; 
-    font-weight: 600; 
-}
-.services-table td { 
-    padding: 8px; 
-    border-bottom: 1px solid #e0e0e0; 
-    color: #34495e;
+/* style.css */
+
+/* Reset Básico e Fontes */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-/* Esconder o formulário para melhor captura do PDF */
-.pdf-generating #form-content {
-    opacity: 0;
-    pointer-events: none;
-    height: 0;
-    overflow: hidden;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    line-height: 1.6;
 }
 
-/* Linhas de Assinatura, visíveis apenas no HTML */
-.signature-line {
-    border-top: 1px solid #34495e;
-    width: 40%;
-    margin: 40px auto 5px;
-    padding-top: 5px;
+/* Container Principal */
+.container {
+    max-width: 1600px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+/* Cabeçalho */
+.header {
     text-align: center;
-    font-size: 12px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.header h1 {
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.header p {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+}
+
+/* Layout de Conteúdo (Grid) */
+.content {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Duas colunas */
+    gap: 30px;
+}
+
+/* Seção do Formulário */
+.form-section {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Grupos de Seção (Fieldset) */
+.section-group {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #34495e;
+    padding: 0 10px;
+    margin-left: 10px;
+}
+
+/* Grupos de Formulário */
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: 600;
     color: #555;
 }
 
-@media (max-width: 1024px) { 
-    .content { grid-template-columns: 1fr; } 
+.form-group input[type="text"],
+.form-group input[type="tel"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+    outline: none;
+}
+
+/* Layout em Linha (Row) */
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.row.full {
+    grid-template-columns: 1fr;
+}
+
+/* Seletor de Tipo (PF/PJ) */
+.type-selector {
+    display: flex;
+    margin-bottom: 20px;
+    border: 1px solid #3498db;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.type-btn {
+    flex: 1;
+    padding: 12px;
+    background-color: #f4f4f4;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #3498db;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.type-btn.active {
+    background-color: #3498db;
+    color: #ffffff;
+}
+
+/* Botões */
+.btn {
+    display: inline-block;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background-color: #27ae60;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #229954;
+}
+
+.btn-secondary {
+    background-color: #2c3e50;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #212f3c;
+}
+
+/* Lista de Serviços */
+.services-list {
+    margin-bottom: 15px;
+}
+
+.service-item {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1.5fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.service-item input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.service-item .btn-remove {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Caixa de Total */
+.total-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: #ecf0f1;
+    border-radius: 6px;
+    margin: 25px 0;
+}
+
+.total-amount {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+/* Lista de Recibos Salvos */
+.saved-receipts-list {
+    margin-top: 15px;
+}
+
+.saved-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.saved-item span {
+    font-weight: 500;
+}
+
+.saved-item-actions button {
+    margin-left: 8px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-load {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-delete {
+    background-color: #e74c3c;
+    color: white;
+}
+
+/* Prévia do Documento */
+.document-preview {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+    /* Estilização da prévia (simples) */
+    border: 1px dashed #ccc;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+    .content {
+        grid-template-columns: 1fr; /* Coluna única */
+    }
+
+    .document-preview {
+        /* Desativa o 'sticky' em layout de coluna única */
+        position: static;
+        margin-top: 30px;
+    }
+}
+
+@media (max-width: 768px) {
+    .row {
+        grid-template-columns: 1fr; /* Coluna única para linhas */
+    }
+
+    .service-item {
+        grid-template-columns: 1fr; /* Coluna única para itens de serviço */
+    }
 }
