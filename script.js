@@ -349,7 +349,7 @@ function atualizarPrevia() {
                                 <td>${s.descricao || 'N/D'}</td>
                                 <td style="text-align: center;">${s.quantidade}</td>
                                 <td style="text-align: right;">${formatarMoeda(s.preco)}</td>
-                                <td style="text-align: right; font-weight: bold;">${formatarMoeda(s.quantidade * s.preco)}</td>
+                            <td style="text-align: right; font-weight: bold;">${formatarMoeda(s.quantidade * s.preco)}</td>
                             </tr>
                         `).join('')}
                         <tr style="background: #ecf0f1;">
@@ -431,7 +431,7 @@ function validarFormulario() {
     return true;
 }
 
-// --- FUNÇÃO DE GERAR PDF COM PDFMAKE (NOVA SOLUÇÃO) ---
+// --- FUNÇÃO DE GERAR PDF COM PDFMAKE (CORRIGIDA A FONTE) ---
 function gerarPDF() {
     if (!validarFormulario()) return;
     
@@ -504,7 +504,8 @@ function gerarPDF() {
         pageSize: 'A4',
         pageMargins: [ 40, 40, 40, 40 ],
         defaultStyle: {
-            font: 'Helvetica' 
+            // CORREÇÃO: Usando 'Roboto', a fonte padrão embutida no vfs_fonts.js
+            font: 'Roboto' 
         },
         content: [
             // Título
@@ -651,7 +652,6 @@ function gerarPDF() {
 }
 
 // --- FUNÇÕES CRUD (Salvar, Carregar, Remover) --- 
-// (Mantidas do script anterior, pois são boas práticas)
 function getFormData() {
     const data = {
         recebedorType,
@@ -751,21 +751,10 @@ function renderRecibosSalvos() {
 
 // --- Inicialização ---
 function init() {
-    // Configura a fonte para o PDFMake. Se for usar a fonte padrão (Helvetica/Times), 
-    // é necessário ter certeza que o pdfMake.vfs_fonts está carregado.
-    if (typeof pdfMake !== 'undefined') {
-        pdfMake.fonts = {
-            Helvetica: {
-                normal: 'Helvetica-normal.js',
-                bold: 'Helvetica-bold.js',
-                italics: 'Helvetica-italics.js',
-                bolditalics: 'Helvetica-bolditalics.js'
-            }
-        };
-        pdfMake.vfs = pdfMake.vfs || {};
-        if (typeof vfs_fonts !== 'undefined') {
-             Object.assign(pdfMake.vfs, vfs_fonts.pdfMake.vfs);
-        }
+    // CORREÇÃO: Removemos a configuração manual de 'Helvetica' para usar 'Roboto',
+    // a fonte padrão embutida no vfs_fonts.js. Apenas garantimos que o vfs está disponível.
+    if (typeof pdfMake !== 'undefined' && typeof vfs_fonts !== 'undefined') {
+         Object.assign(pdfMake.vfs, vfs_fonts.pdfMake.vfs);
     }
 
     const salvos = localStorage.getItem('recibosGerador');

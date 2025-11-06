@@ -83,9 +83,6 @@ input:focus, select:focus, textarea:focus {
     font-weight: 500; 
     color: #2c3e50;
 }
-.type-btn:hover {
-    background: #e0e6e9;
-}
 .type-btn.active { 
     border-color: #3498db; 
     background: #3498db; 
@@ -108,9 +105,6 @@ input:focus, select:focus, textarea:focus {
     border-left: 4px solid #3498db; 
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.service-item:last-child { 
-    margin-bottom: 0; 
-}
 .service-field label { 
     display: block; 
     margin-bottom: 4px; 
@@ -124,9 +118,6 @@ input:focus, select:focus, textarea:focus {
     gap: 10px; 
     align-items: flex-end; 
 }
-.service-row .service-field { 
-    margin-bottom: 0; 
-}
 .btn-remove-service { 
     background: #e74c3c; 
     color: white; 
@@ -137,9 +128,6 @@ input:focus, select:focus, textarea:focus {
     font-size: 11px; 
     height: 38px; 
     width: 100%; 
-}
-.btn-remove-service:hover { 
-    background: #c0392b; 
 }
 .btn { 
     padding: 14px 28px; 
@@ -155,19 +143,11 @@ input:focus, select:focus, textarea:focus {
     color: white; 
     width: 100%; 
 }
-.btn-primary:hover { 
-    background: #2980b9; 
-    transform: translateY(-1px); 
-    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3); 
-}
 .btn-secondary { 
     background: #2ecc71; 
     color: white; 
     width: 100%; 
     margin-top: 20px; 
-}
-.btn-secondary:hover { 
-    background: #27ae60; 
 }
 .total-box { 
     background: #f5f5f5; 
@@ -194,43 +174,66 @@ input:focus, select:focus, textarea:focus {
     overflow-y: auto; 
     border: 1px solid #dcdde1;
 }
-.section-group {
-    border: 1px solid #bdc3c7;
-    padding: 20px;
-    margin-bottom: 30px;
-    border-radius: 4px;
+/* Estilos para o Conteúdo do Preview - PDF */
+.preview-header { 
+    text-align: center; 
+    border-bottom: 2px solid #3498db; 
+    padding-bottom: 15px; 
+    margin-bottom: 20px; 
 }
-.section-group legend {
-    font-size: 1.1em;
-    font-weight: bold;
+.preview-title { 
+    font-size: 28px; 
+    font-weight: bold; 
     color: #2c3e50;
-    padding: 0 10px;
-    margin-left: -5px;
 }
-/* Estilos para Recibos Salvos */
-.saved-receipts-list { margin-top: 15px; max-height: 200px; overflow-y: auto; background: #ecf0f1; border-radius: 4px; padding: 10px; }
-.saved-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: white; border: 1px solid #dcdde1; border-radius: 4px; margin-bottom: 8px; }
-.saved-item-name { font-weight: 500; font-size: 14px; }
-.saved-item-actions button { margin-left: 8px; padding: 6px 10px; font-size: 12px; border-radius: 4px; }
-.btn-load { background: #3498db; color: white; border: none; }
-.btn-delete { background: #e74c3c; color: white; border: none; }
-.btn-load:hover { background: #2980b9; }
-.btn-delete:hover { background: #c0392b; }
+.preview-section h3 { 
+    background: #ecf0f1; 
+    padding: 8px; 
+    margin-bottom: 10px; 
+    border-radius: 2px; 
+    font-size: 14px; 
+    color: #34495e; 
+    border-left: 4px solid #3498db; 
+    font-weight: 600;
+}
+.services-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 14px; 
+}
+.services-table th { 
+    background: #3498db; 
+    color: white;
+    padding: 10px; 
+    text-align: left; 
+    border-bottom: 2px solid #2c3e50; 
+    font-weight: 600; 
+}
+.services-table td { 
+    padding: 8px; 
+    border-bottom: 1px solid #e0e0e0; 
+    color: #34495e;
+}
 
-/* Estilos de preview (mantidos para o lado HTML) */
-.preview-header { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 15px; margin-bottom: 20px; }
-.preview-title { font-size: 24px; font-weight: bold; color: #2c3e50;}
-.preview-section { margin-bottom: 20px; }
-.preview-section h3 { background: #ecf0f1; padding: 8px; margin-bottom: 10px; border-radius: 2px; font-size: 14px; color: #34495e; border-left: 4px solid #3498db; font-weight: 600;}
-.preview-row { display: flex; margin-bottom: 5px; font-size: 14px; }
-.preview-label { font-weight: bold; width: 120px; color: #34495e; }
-.preview-value { flex-grow: 1; color: #555; }
-.services-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-.services-table th, .services-table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-.services-table th { background-color: #3498db; color: white; font-size: 13px; }
+/* Esconder o formulário para melhor captura do PDF */
+.pdf-generating #form-content {
+    opacity: 0;
+    pointer-events: none;
+    height: 0;
+    overflow: hidden;
+}
+
+/* Linhas de Assinatura, visíveis apenas no HTML */
+.signature-line {
+    border-top: 1px solid #34495e;
+    width: 40%;
+    margin: 40px auto 5px;
+    padding-top: 5px;
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+}
 
 @media (max-width: 1024px) { 
     .content { grid-template-columns: 1fr; } 
-    .document-preview { max-height: 500px; } 
-    .service-row { grid-template-columns: 1fr 1fr 1fr 50px; }
 }
