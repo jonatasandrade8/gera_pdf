@@ -3,206 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Recibos Profissional (PDFMake)</title>
+    <title>Assistente de Desenvolvimento - Ferramentas Web</title>
+    <link rel="stylesheet" href="style.css"> 
     
-    <link rel="stylesheet" href="style.css">
-    
-    <link rel="icon" type="image/x-icon" href="data:," /> 
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
-    
+    <style>
+        .menu-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 30px;
+            text-align: center;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .menu-container h1 { color: #2c3e50; margin-bottom: 30px; }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .menu-item {
+            display: block;
+            padding: 25px;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+        .menu-item:hover {
+            transform: translateY(-5px);
+        }
+        .menu-item.active { background-color: #27ae60; }
+        .menu-item.active-alt { background-color: #2980b9; }
+        .menu-item.disabled { background-color: #95a5a6; cursor: not-allowed; }
+    </style>
 </head>
 <body>
-    
-    <div class="container">
-        <div class="header">
-            <h1>📄 Gerador de Recibos</h1>
-            <p>Crie recibos profissionais em PDF com geração programática (PDFMake)</p>
-        </div>
+    <div class="menu-container">
+        <h1>🛠️ Painel de Gadgets</h1>
+        <p>Selecione a aplicação que deseja utilizar:</p>
+        
+        <div class="menu-grid">
+            <a href="recibo.html" class="menu-item active">📄 Gerador de Recibo de Serviços</a>
+            <a href="nota.html" class="menu-item active-alt">💰 Nota de Valores a Receber</a>
 
-        <div class="content">
-            <div class="form-section">
-                <h2>Informações do Recibo</h2>
-
-                <fieldset class="section-group">
-                    <legend class="section-title">👤 Recebedor (Prestador de Serviço)</legend>
-                    
-                    <div class="type-selector">
-                        <button class="type-btn active" onclick="setRecebedorType('pf')" id="btn-recebedor-pf">Pessoa Física</button>
-                        <button class="type-btn" onclick="setRecebedorType('pj')" id="btn-recebedor-pj">Pessoa Jurídica</button>
-                    </div>
-
-                    <div class="form-group">
-                        <label id="label-recebedor-nome">Nome Completo *</label>
-                        <input type="text" id="recebedor-nome" placeholder="Ex: João da Silva" oninput="atualizarPrevia()">
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label id="label-recebedor-doc">CPF *</label>
-                            <input type="text" id="recebedor-doc" placeholder="000.000.000-00" maxlength="18" oninput="formatarDocumento(this)" onblur="buscarCNPJ('recebedor')">
-                        </div>
-                        <div class="form-group">
-                            <label>Telefone *</label>
-                            <input type="tel" id="recebedor-tel" placeholder="(00) 00000-0000" maxlength="15" oninput="formatarTelefone(this); atualizarPrevia()">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>CEP *</label>
-                        <input type="text" id="recebedor-cep" placeholder="00000-000" maxlength="9" oninput="formatarCEP(this)" onblur="buscarCEP('recebedor')">
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Rua *</label>
-                            <input type="text" id="recebedor-rua" placeholder="Endereço" oninput="atualizarPrevia()">
-                        </div>
-                        <div class="form-group">
-                            <label>Número *</label>
-                            <input type="text" id="recebedor-num" placeholder="0000" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-
-                    <div class="row full">
-                        <div class="form-group">
-                            <label>Complemento</label>
-                            <input type="text" id="recebedor-comp" placeholder="Apt, sala, etc" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Cidade *</label>
-                            <input type="text" id="recebedor-cidade" placeholder="Cidade" oninput="atualizarPrevia()">
-                        </div>
-                        <div class="form-group">
-                            <label>UF *</label>
-                            <input type="text" id="recebedor-uf" placeholder="SP" maxlength="2" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-                </fieldset>
-
-                <fieldset class="section-group">
-                    <legend class="section-title">💰 Pagador (Cliente)</legend>
-
-                    <div class="type-selector">
-                        <button class="type-btn active" onclick="setPagadorType('pf')" id="btn-pagador-pf">Pessoa Física</button>
-                        <button class="type-btn" onclick="setPagadorType('pj')" id="btn-pagador-pj">Pessoa Jurídica</button>
-                    </div>
-
-                    <div class="form-group">
-                        <label id="label-pagador-nome">Nome Completo</label>
-                        <input type="text" id="pagador-nome" placeholder="Ex: Maria da Silva" oninput="atualizarPrevia()">
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label id="label-pagador-doc">CPF</label>
-                            <input type="text" id="pagador-doc" placeholder="000.000.000-00" maxlength="18" oninput="formatarDocumento(this)" onblur="buscarCNPJ('pagador')">
-                        </div>
-                        <div class="form-group">
-                            <label>Telefone</label>
-                            <input type="tel" id="pagador-tel" placeholder="(00) 00000-0000" maxlength="15" oninput="formatarTelefone(this); atualizarPrevia()">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>CEP</label>
-                        <input type="text" id="pagador-cep" placeholder="00000-000" maxlength="9" oninput="formatarCEP(this)" onblur="buscarCEP('pagador')">
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Rua</label>
-                            <input type="text" id="pagador-rua" placeholder="Endereço" oninput="atualizarPrevia()">
-                        </div>
-                        <div class="form-group">
-                            <label>Número</label>
-                            <input type="text" id="pagador-num" placeholder="0000" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-
-                    <div class="row full">
-                        <div class="form-group">
-                            <label>Complemento</label>
-                            <input type="text" id="pagador-comp" placeholder="Apt, sala, etc" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Cidade</label>
-                            <input type="text" id="pagador-cidade" placeholder="Cidade" oninput="atualizarPrevia()">
-                        </div>
-                        <div class="form-group">
-                            <label>UF</label>
-                            <input type="text" id="pagador-uf" placeholder="SP" maxlength="2" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-                </fieldset>
-
-                <fieldset class="section-group">
-                    <legend class="section-title">🛍️ Produtos/Serviços</legend>
-
-                    <div class="services-list" id="services-list">
-                        <p style="color: #999; text-align: center; padding: 20px;">Nenhum produto/serviço adicionado</p>
-                    </div>
-
-                    <button class="btn btn-primary" onclick="adicionarServico()">+ Adicionar Produto/Serviço</button>
-                </fieldset>
-
-                <fieldset class="section-group">
-                    <legend class="section-title">📅 Data/Período da Prestação de Serviço</legend>
-
-                    <div class="row full">
-                        <div class="form-group">
-                            <label>Tipo de Período *</label>
-                            <select id="periodo-tipo" onchange="atualizarPrevia()">
-                                <option value="dia">Por Dia(s)</option>
-                                <option value="mes">Por Mês(es)</option>
-                                <option value="ano">Por Ano(s)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label id="label-periodo-inicio">Data de Início *</label>
-                            <input type="date" id="periodo-inicio" oninput="atualizarPrevia()">
-                        </div>
-                        <div class="form-group">
-                            <label id="label-periodo-fim">Data de Término *</label>
-                            <input type="date" id="periodo-fim" oninput="atualizarPrevia()">
-                        </div>
-                    </div>
-                </fieldset>
-
-                <div class="total-box">
-                    <div>Total do Recibo</div>
-                    <div class="total-amount" id="total-amount">R$ 0,00</div>
-                </div>
-
-                <button class="btn btn-secondary" onclick="gerarPDF()">📥 Gerar PDF Profissional</button>
-
-                <fieldset class="section-group">
-                    <legend class="section-title">💾 Gerenciamento de Recibos</legend>
-                    <button class="btn btn-primary" onclick="salvarRecibo()" style="background-color: #e67e22;">Salvar Modelo Atual</button>
-                    <div class="saved-receipts-list" id="lista-recibos-salvos">
-                        <p style="color: #999; text-align: center; padding: 10px;">Nenhum recibo salvo.</p>
-                    </div>
-                </fieldset>
-
-            </div>
-
-            <div class="form-section">
-                <h2>Prévia do Recibo</h2>
-                <div class="document-preview" id="preview"></div>
-            </div>
+            <a href="ferramenta_1.html" class="menu-item disabled">Calculadora (Em Breve)</a>
+            <a href="ferramenta_2.html" class="menu-item disabled">Gerador de Contrato (Em Breve)</a>
+            <a href="ferramenta_3.html" class="menu-item disabled">Conversor de Unidades (Em Breve)</a>
+            <a href="ferramenta_4.html" class="menu-item disabled">Analisador de Texto (Em Breve)</a>
         </div>
     </div>
-
-    <script src="script.js"></script>
 </body>
 </html>
