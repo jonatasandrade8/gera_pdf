@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criador de Provas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+    <style>
+        .prova-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-height: 70vh; }
+        @media (max-width: 1200px) { .prova-layout { grid-template-columns: 1fr; } }
+        .editor-toolbar { display: flex; gap: 4px; margin-bottom: 8px; }
+        .editor-toolbar button { background: var(--bg-primary); border: 1px solid var(--border-color); padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; transition: var(--transition); color: var(--text-primary); }
+        .editor-toolbar button:hover { background: var(--accent-blue); color: white; }
+        .editor-toolbar button.active { background: var(--accent-blue); color: white; }
+        .question-editor { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 15px; margin-bottom: 12px; }
+        .section-editor { background: var(--bg-secondary); border: 2px solid var(--border-color); border-radius: var(--radius-lg); margin-bottom: 15px; overflow: hidden; }
+        .section-editor-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: var(--bg-primary); cursor: pointer; }
+        .section-editor-body { padding: 15px; }
+        .template-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .prova-preview { background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 40px; min-height: 600px; box-shadow: var(--shadow-sm); font-family: 'Times New Roman', serif; position: sticky; top: 80px; }
+        .preview-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .preview-header h2 { font-size: 1.3rem; margin-bottom: 5px; color: #222; }
+        .preview-header p { font-size: 0.9rem; color: #555; margin: 2px 0; }
+        .student-info { margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .student-info p { margin-bottom: 8px; }
+        .student-info .line { border-bottom: 1px solid #333; display: inline-block; min-width: 250px; }
+        .q-preview { margin-bottom: 20px; }
+        .q-preview .q-num { font-weight: 700; }
+        .q-preview .q-text { margin: 5px 0 10px 0; }
+        .q-preview .q-opts { margin-left: 20px; }
+        .q-preview .q-opts p { margin: 3px 0; }
+        .q-preview .q-answer-space { border: 1px solid #ddd; min-height: 80px; margin-top: 10px; border-radius: 4px; }
+        .section-title-preview { font-weight: 700; font-size: 1.1rem; margin: 20px 0 10px 0; padding: 5px 10px; background-color: #f0f0f0; border-left: 3px solid #3498db; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link">💰 Nota</a>
+            <a href="checklist.html" class="nav-link">✅ Checklist</a>
+            <a href="prova.html" class="nav-link active">📝 Prova</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
+
+        <div class="header">
+            <h1>📝 Criador de Provas</h1>
+            <p>Crie provas personalizáveis com múltiplos tipos de questões, seções e gabarito</p>
+        </div>
+
+        <div class="prova-layout">
+            <div class="form-section">
+                <h2>Editor da Prova</h2>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">🏫 Cabeçalho</legend>
+                    <div class="form-group">
+                        <label>Instituição / Escola</label>
+                        <input type="text" id="provaInstituicao" placeholder="Ex: Colégio Estadual São Paulo" oninput="renderPreview()">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Professor(a)</label>
+                            <input type="text" id="provaProfessor" placeholder="Nome do professor" oninput="renderPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Disciplina</label>
+                            <input type="text" id="provaDisciplina" placeholder="Ex: Matemática" oninput="renderPreview()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Data da Prova</label>
+                            <input type="date" id="provaData" oninput="renderPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor Total</label>
+                            <input type="text" id="provaValor" placeholder="Ex: 10,0" oninput="renderPreview()">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Instruções Gerais</label>
+                        <textarea id="provaInstrucoes" rows="2" placeholder="Ex: Prova sem consulta. Use caneta azul ou preta." oninput="renderPreview()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="provaCampoAluno" checked onchange="renderPreview()"> Mostrar campo "Nome do Aluno"</label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📚 Templates Rápidos</legend>
+                    <div class="template-grid">
+                        <div class="template-card" onclick="aplicarTemplate('matematica')">
+                            <div class="template-icon">🔢</div>
+                            <div class="template-name">Matemática</div>
+                        </div>
+                        <div class="template-card" onclick="aplicarTemplate('portugues')">
+                            <div class="template-icon">📖</div>
+                            <div class="template-name">Português</div>
+                        </div>
+                        <div class="template-card" onclick="aplicarTemplate('ciencias')">
+                            <div class="template-icon">🔬</div>
+                            <div class="template-name">Ciências</div>
+                        </div>
+                        <div class="template-card" onclick="aplicarTemplate('historia')">
+                            <div class="template-icon">📜</div>
+                            <div class="template-name">História</div>
+                        </div>
+                        <div class="template-card" onclick="aplicarTemplate('geografia')">
+                            <div class="template-icon">🌍</div>
+                            <div class="template-name">Geografia</div>
+                        </div>
+                        <div class="template-card" onclick="aplicarTemplate('vazio')">
+                            <div class="template-icon">📄</div>
+                            <div class="template-name">Em Branco</div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <div class="prova-stats" id="provaStats">
+                    <div>Questões: <span id="statQuestoes">0</span></div>
+                    <div>Seções: <span id="statSecoes">0</span></div>
+                    <div>Valor Total: <span id="statValor">0,0</span></div>
+                </div>
+
+                <div class="prova-toolbar">
+                    <button class="btn btn-primary btn-sm" onclick="adicionarSecao()">📁 Nova Seção</button>
+                    <button class="btn btn-secondary btn-sm" onclick="adicionarQuestao()">➕ Nova Questão</button>
+                    <button class="btn btn-warning btn-sm" onclick="salvarProva()">💾 Salvar</button>
+                    <button class="btn btn-outline btn-sm" onclick="gerarPDFProva()">📥 PDF Prova</button>
+                    <button class="btn btn-outline btn-sm" onclick="gerarPDFGabarito()">🔑 PDF Gabarito</button>
+                </div>
+
+                <div id="provaEditor"></div>
+
+                <div class="btn-group" style="margin-top: 15px;">
+                    <button class="btn btn-outline" onclick="limparProva()">🗑️ Limpar Tudo</button>
+                </div>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">💾 Provas Salvas</legend>
+                    <div id="provasSalvas"></div>
+                </fieldset>
+            </div>
+
+            <div class="form-section">
+                <h2>Prévia da Prova</h2>
+                <div class="prova-preview" id="provaPreview">
+                    <p style="text-align: center; color: #999; padding-top: 100px;">Preencha o cabeçalho e adicione questões para ver a prévia.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nova Questão -->
+    <div class="modal-overlay" id="modalQuestao">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="modalQuestaoTitulo">Nova Questão</h3>
+                <button class="modal-close" onclick="fecharModal('modalQuestao')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Tipo da Questão</label>
+                <select id="questaoTipo" onchange="renderQuestaoForm()">
+                    <option value="discursiva">Discursiva (texto livre)</option>
+                    <option value="objetiva_vf">Objetiva - Verdadeiro/Falso</option>
+                    <option value="multipla_escolha">Múltipla Escolha (A, B, C, D, E)</option>
+                    <option value="lacuna">Lacuna (preencher espaços)</option>
+                    <option value="correspondencia">Correspondência (relacionar colunas)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Enunciado *</label>
+                <div class="editor-toolbar">
+                    <button type="button" onclick="execCmd('bold')" title="Negrito"><b>N</b></button>
+                    <button type="button" onclick="execCmd('italic')" title="Itálico"><i>I</i></button>
+                    <button type="button" onclick="execCmd('underline')" title="Sublinhado"><u>S</u></button>
+                </div>
+                <div id="questaoEnunciado" contenteditable="true" style="min-height: 80px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background: var(--bg-secondary);"></div>
+            </div>
+            <div class="row">
+                <div class="form-group">
+                    <label>Valor da Questão</label>
+                    <input type="number" id="questaoValor" value="1.0" min="0" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Espaço para Resposta (linhas)</label>
+                    <input type="number" id="questaoEspaco" value="4" min="0" max="20">
+                </div>
+            </div>
+            <div id="questaoOpcoesContainer"></div>
+            <input type="hidden" id="questaoEditId" value="">
+            <input type="hidden" id="questaoSecaoId" value="">
+            <button class="btn btn-primary" onclick="salvarQuestao()">Salvar Questão</button>
+        </div>
+    </div>
+
+    <!-- Modal Nova Seção -->
+    <div class="modal-overlay" id="modalSecao">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Nova Seção</h3>
+                <button class="modal-close" onclick="fecharModal('modalSecao')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Título da Seção</label>
+                <input type="text" id="secaoTitulo" placeholder="Ex: Parte 1 - Questões Objetivas">
+            </div>
+            <div class="form-group">
+                <label>Instruções da Seção (opcional)</label>
+                <textarea id="secaoInstrucoes" rows="2" placeholder="Ex: Marque apenas uma alternativa."></textarea>
+            </div>
+            <input type="hidden" id="secaoEditId" value="">
+            <button class="btn btn-primary" onclick="salvarSecao()">Salvar Seção</button>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="prova.js"></script>
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark ? '1' : '0');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeBtn').textContent = '☀️';
+            }
+        });
+    </script>
+</body>
+</html>

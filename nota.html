@@ -3,291 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador Simplificado de Nota PF</title>
-    
+    <title>Gerador de Nota de Valores</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
-    
-    <style>
-        /* CSS SIMPLIFICADO */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; color: #333; line-height: 1.6; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-        .form-section { background-color: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
-        .header h1 { color: #2c3e50; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; color: #555; }
-        
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
-        input:focus { border-color: #3498db; outline: none; box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); }
-
-        .row { display: flex; gap: 15px; }
-        .row .form-group { flex: 1; }
-        
-        /* Botões */
-        .btn { display: block; width: 100%; padding: 12px; margin: 15px 0; border: none; border-radius: 4px; font-size: 1.1rem; cursor: pointer; font-weight: 700; transition: background-color 0.3s; }
-        .btn-add { background-color: #2ecc71; color: white; }
-        .btn-add:hover { background-color: #27ae60; }
-        .btn-pdf { background-color: #3498db; color: white; }
-        .btn-pdf:hover { background-color: #2980b9; }
-
-        /* Prévia da Nota (Tabela) */
-        .document-preview { background-color: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); min-height: 400px; position: sticky; top: 20px; }
-        .preview-header { margin-bottom: 20px; }
-        .preview-header h3 { color: #2980b9; }
-        .preview-header p { font-size: 1.1rem; color: #7f8c8d; }
-
-        .items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        .items-table th, .items-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-        .items-table th { background-color: #ecf0f1; font-weight: 700; }
-        .items-table tfoot td { font-size: 1.3rem; font-weight: 700; background-color: #d1e7dd; color: #27ae60; border-top: 2px solid #27ae60; }
-
-        .remove-btn { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-        .remove-btn:hover { background-color: #c0392b; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
     <div class="container">
-        
-        <div class="form-section">
-            <div class="header">
-                <h1>✍️ Dados da Nota (Pessoa Física)</h1>
-            </div>
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link active">💰 Nota</a>
+            <a href="checklist.html" class="nav-link">✅ Checklist</a>
+            <a href="prova.html" class="nav-link">📝 Prova</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
 
-            <div class="form-group">
-                <label>Nome Completo (Recebedor) *</label>
-                <input type="text" id="recebedor-nome" placeholder="Ex: João da Silva" oninput="renderPreview()">
-            </div>
-            
-            <div class="form-group">
-                <label>Título da Nota *</label>
-                <input type="text" id="nota-titulo" placeholder="Ex: Cobrança de Serviços de Consultoria - Janeiro" oninput="renderPreview()">
-            </div>
-
-            <h2>➕ Adicionar Item</h2>
-            <div class="row">
-                <div class="form-group" style="flex: 2;">
-                    <label>Descrição do Item</label>
-                    <input type="text" id="item-descricao" placeholder="Serviço, Produto ou Desconto">
-                </div>
-                <div class="form-group">
-                    <label>Valor (R$)</label>
-                    <input type="number" id="item-valor" placeholder="0.00" min="0" step="0.01">
-                </div>
-            </div>
-
-            <button class="btn btn-add" onclick="addItem()">+ Adicionar à Nota</button>
-
-            <button class="btn btn-pdf" onclick="gerarPDF()">📥 Baixar PDF</button>
-
+        <div class="header">
+            <h1>💰 Nota de Valores a Receber</h1>
+            <p>Emita notas profissionais com recebíveis, descontos e logo</p>
         </div>
 
-        <div class="document-preview">
-            <div class="preview-header">
-                <h2>Prévia da Nota</h2>
-                <h3 id="preview-titulo">Título da Nota</h3>
-                <p>Emitido por: <span id="preview-recebedor-nome">Nome do Recebedor</span></p>
+        <div class="content">
+            <div class="form-section">
+                <h2>Dados da Nota</h2>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">👤 Recebedor</legend>
+                    <div class="type-selector">
+                        <button class="type-btn active" onclick="setRecebedorType('pf')" id="btn-recebedor-pf">Pessoa Física</button>
+                        <button class="type-btn" onclick="setRecebedorType('pj')" id="btn-recebedor-pj">Pessoa Jurídica</button>
+                    </div>
+                    <div class="form-group">
+                        <label id="label-recebedor-nome">Nome Completo *</label>
+                        <input type="text" id="recebedor-nome" placeholder="Ex: João da Silva" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label id="label-recebedor-doc">CPF *</label>
+                            <input type="text" id="recebedor-doc" placeholder="000.000.000-00" maxlength="18" oninput="formatarDocumentoInput(this)" onblur="buscarCNPJField('recebedor')">
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone *</label>
+                            <input type="tel" id="recebedor-tel" placeholder="(00) 00000-0000" maxlength="15" oninput="formatarTelefone(this); atualizarPrevia()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>CEP *</label>
+                            <input type="text" id="recebedor-cep" placeholder="00000-000" maxlength="9" oninput="formatarCEP(this)" onblur="buscarCEPField('recebedor')">
+                        </div>
+                        <div class="form-group">
+                            <label>Rua *</label>
+                            <input type="text" id="recebedor-rua" placeholder="Endereço" oninput="atualizarPrevia()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Número *</label>
+                            <input type="text" id="recebedor-num" placeholder="0000" oninput="atualizarPrevia()">
+                        </div>
+                        <div class="form-group">
+                            <label>Cidade *</label>
+                            <input type="text" id="recebedor-cidade" placeholder="Cidade" oninput="atualizarPrevia()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>UF *</label>
+                            <input type="text" id="recebedor-uf" placeholder="SP" maxlength="2" oninput="atualizarPrevia()">
+                        </div>
+                    </div>
+                    <div class="form-group" id="logo-recebedor-group" style="display: none;">
+                        <label>Logo da Empresa</label>
+                        <input type="file" id="recebedor-logo" accept="image/*" onchange="processarLogo()">
+                        <input type="hidden" id="recebedor-logo-base64">
+                        <p class="logo-status" id="logo-status-text">Nenhuma imagem selecionada.</p>
+                    </div>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">💰 Pagador (Cliente)</legend>
+                    <div class="type-selector">
+                        <button class="type-btn active" onclick="setPagadorType('pf')" id="btn-pagador-pf">Pessoa Física</button>
+                        <button class="type-btn" onclick="setPagadorType('pj')" id="btn-pagador-pj">Pessoa Jurídica</button>
+                    </div>
+                    <div class="form-group">
+                        <label id="label-pagador-nome">Nome Completo</label>
+                        <input type="text" id="pagador-nome" placeholder="Ex: Maria da Silva" oninput="atualizarPrevia()">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label id="label-pagador-doc">CPF</label>
+                            <input type="text" id="pagador-doc" placeholder="000.000.000-00" maxlength="18" oninput="formatarDocumentoInput(this)" onblur="buscarCNPJField('pagador')">
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="tel" id="pagador-tel" placeholder="(00) 00000-0000" maxlength="15" oninput="formatarTelefone(this); atualizarPrevia()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Rua</label>
+                            <input type="text" id="pagador-rua" placeholder="Endereço" oninput="atualizarPrevia()">
+                        </div>
+                        <div class="form-group">
+                            <label>Número</label>
+                            <input type="text" id="pagador-num" placeholder="0000" oninput="atualizarPrevia()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Cidade</label>
+                            <input type="text" id="pagador-cidade" placeholder="Cidade" oninput="atualizarPrevia()">
+                        </div>
+                        <div class="form-group">
+                            <label>UF</label>
+                            <input type="text" id="pagador-uf" placeholder="SP" maxlength="2" oninput="atualizarPrevia()">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📈 Recebíveis</legend>
+                    <div class="table-container">
+                        <table class="interactive-table">
+                            <thead><tr><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
+                            <tbody id="recebiveis-tbody"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-primary" onclick="adicionarItem('recebiveis')">+ Adicionar Recebível</button>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📉 Descontos</legend>
+                    <div class="table-container">
+                        <table class="interactive-table">
+                            <thead><tr><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
+                            <tbody id="descontos-tbody"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-danger" onclick="adicionarItem('descontos')">+ Adicionar Desconto</button>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📅 Período</legend>
+                    <div class="form-group">
+                        <label>Tipo de Período</label>
+                        <select id="periodo-tipo" onchange="atualizarPrevia()">
+                            <option value="dia">Por Dia(s)</option>
+                            <option value="mes">Por Mês(es)</option>
+                            <option value="ano">Por Ano(s)</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Data de Início</label>
+                            <input type="date" id="periodo-inicio" oninput="atualizarPrevia()">
+                        </div>
+                        <div class="form-group">
+                            <label>Data de Término</label>
+                            <input type="date" id="periodo-fim" oninput="atualizarPrevia()">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📝 Observações</legend>
+                    <textarea id="observacoes" rows="3" placeholder="Observações adicionais..." oninput="atualizarPrevia()"></textarea>
+                </fieldset>
+
+                <div class="total-box">
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">Recebíveis: <span id="total-recebiveis" style="color: var(--accent-green);">R$ 0,00</span></div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">Descontos: <span id="total-descontos" style="color: var(--accent-red);">R$ 0,00</span></div>
+                    </div>
+                    <div class="total-amount" id="total-final" style="color: var(--accent-blue);">R$ 0,00</div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="gerarPDF()">📥 Gerar PDF</button>
+                    <button class="btn btn-outline" onclick="limparFormulario()">🗑️ Limpar</button>
+                </div>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">💾 Modelos Salvos</legend>
+                    <button class="btn btn-warning" onclick="salvarNota()" style="background-color: var(--accent-orange);">💾 Salvar Nota</button>
+                    <div class="saved-items-list" id="lista-notas-salvas"></div>
+                </fieldset>
             </div>
-            
-            <div id="preview-content">
-                <p style="text-align: center; color: #999; padding-top: 50px;">Adicione itens para ver a prévia.</p>
+
+            <div class="form-section">
+                <h2>Prévia da Nota</h2>
+                <div class="document-preview" id="preview"></div>
             </div>
         </div>
     </div>
 
+    <script src="utils.js"></script>
+    <script src="nota_script.js"></script>
     <script>
-        // JS SIMPLIFICADO
-        let items = []; // Armazenará { descricao, valor }
-
-        // --- FUNÇÕES DE FORMATACÃO ---
-
-        function formatarParaMoeda(valor) {
-            // Formatação BRL (R$)
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-                minimumFractionDigits: 2
-            }).format(valor);
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark ? '1' : '0');
         }
-
-        function calculateTotal() {
-            return items.reduce((sum, item) => sum + item.valor, 0);
-        }
-
-        // --- GESTÃO DE ITENS ---
-
-        function addItem() {
-            const descricaoInput = document.getElementById('item-descricao');
-            const valorInput = document.getElementById('item-valor');
-
-            const descricao = descricaoInput.value.trim();
-            const valor = parseFloat(valorInput.value);
-
-            if (!descricao || isNaN(valor) || valor <= 0) {
-                alert("Por favor, preencha a descrição e um valor válido.");
-                return;
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeBtn').textContent = '☀️';
             }
-
-            items.push({ descricao, valor });
-            
-            // Limpar inputs
-            descricaoInput.value = '';
-            valorInput.value = '';
-
-            renderPreview();
-        }
-
-        function removeItem(index) {
-            items.splice(index, 1);
-            renderPreview();
-        }
-
-        // --- PRÉVIA DO DOCUMENTO ---
-
-        function renderPreview() {
-            const previewContainer = document.getElementById('preview-content');
-            const recebedorNome = document.getElementById('recebedor-nome').value || 'Nome do Recebedor';
-            const notaTitulo = document.getElementById('nota-titulo').value || 'Título da Nota';
-
-            document.getElementById('preview-recebedor-nome').innerText = recebedorNome;
-            document.getElementById('preview-titulo').innerText = notaTitulo;
-
-            if (items.length === 0) {
-                previewContainer.innerHTML = '<p style="text-align: center; color: #999; padding-top: 50px;">Adicione itens para ver a prévia.</p>';
-                return;
-            }
-
-            const total = calculateTotal();
-
-            let tableHTML = `
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th>DESCRIÇÃO</th>
-                            <th style="text-align: right;">VALOR</th>
-                            <th>AÇÃO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            items.forEach((item, index) => {
-                tableHTML += `
-                    <tr>
-                        <td>${item.descricao}</td>
-                        <td style="text-align: right;">${formatarParaMoeda(item.valor)}</td>
-                        <td><button class="remove-btn" onclick="removeItem(${index})">Remover</button></td>
-                    </tr>
-                `;
-            });
-
-            tableHTML += `
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="2" style="text-align: right; padding-right: 10px;">TOTAL LÍQUIDO:</td>
-                            <td colspan="1">${formatarParaMoeda(total)}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            `;
-
-            previewContainer.innerHTML = tableHTML;
-        }
-
-        // Garante que a prévia inicial esteja correta
-        document.addEventListener('DOMContentLoaded', renderPreview);
-        
-        // --- GERAÇÃO DO PDF (PDFMake) ---
-
-        function gerarPDF() {
-            const recebedorNome = document.getElementById('recebedor-nome').value.trim();
-            const notaTitulo = document.getElementById('nota-titulo').value.trim();
-            
-            if (!recebedorNome || !notaTitulo || items.length === 0) {
-                alert("Por favor, preencha o Nome, o Título da Nota e adicione pelo menos um item.");
-                return;
-            }
-
-            const total = calculateTotal();
-            const dataAtual = new Date().toLocaleDateString('pt-BR');
-
-            // Corpo da tabela de itens para o PDF
-            const tableBody = [
-                [{ text: 'DESCRIÇÃO', style: 'tableHeader' }, { text: 'VALOR (R$)', style: 'tableHeader', alignment: 'right' }],
-            ];
-
-            items.forEach(item => {
-                tableBody.push([
-                    { text: item.descricao, fontSize: 10 },
-                    { text: formatarParaMoeda(item.valor).replace('R$', '').trim(), alignment: 'right', fontSize: 10 }
-                ]);
-            });
-
-            // Linha de Total
-            tableBody.push([
-                { text: 'TOTAL LÍQUIDO', style: 'totalFinalLabel', fillColor: '#d1e7dd', alignment: 'right' },
-                { text: formatarParaMoeda(total).replace('R$', '').trim(), style: 'totalFinalAmount', fillColor: '#d1e7dd', color: '#27ae60' }
-            ]);
-
-            const docDefinition = {
-                pageSize: 'A4',
-                pageMargins: [40, 40, 40, 40],
-                content: [
-                    { text: 'NOTA DE VALORES A RECEBER', style: 'header', alignment: 'center', margin: [0, 0, 0, 10] },
-                    { text: notaTitulo, style: 'subheader', alignment: 'center', margin: [0, 0, 0, 20] },
-                    
-                    { 
-                        text: [
-                            { text: 'EMISSOR:\n', bold: true },
-                            { text: recebedorNome + ' (Pessoa Física)\n', fontSize: 11 },
-                            { text: 'Data de Emissão: ' + dataAtual, fontSize: 10 }
-                        ],
-                        alignment: 'left',
-                        margin: [0, 0, 0, 20]
-                    },
-
-                    // Tabela de Itens
-                    {
-                        table: {
-                            headerRows: 1,
-                            widths: ['*', 100],
-                            body: tableBody
-                        },
-                        layout: {
-                            hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5,
-                            vLineWidth: (i, node) => 0.5,
-                            hLineColor: (i, node) => (i === 0 || i === node.table.body.length) ? '#999' : '#eee',
-                            vLineColor: (i, node) => '#eee',
-                        },
-                        margin: [0, 5, 0, 30]
-                    },
-
-                    // Linha de Assinatura
-                    {
-                        text: '___________________________________\n' + recebedorNome, 
-                        alignment: 'center', 
-                        style: 'assinaturaNome', 
-                        margin: [0, 50, 0, 0]
-                    },
-                ].filter(Boolean),
-
-                // Estilos PDFMake
-                styles: {
-                    header: { fontSize: 22, bold: true, color: '#2c3e50' },
-                    subheader: { fontSize: 16, bold: false, color: '#34495e' },
-                    tableHeader: { bold: true, fontSize: 10, color: '#FFFFFF', fillColor: '#34495e', alignment: 'left', padding: [5, 2] },
-                    totalFinalLabel: { fontSize: 12, bold: true, color: '#2c3e50', padding: [5, 2] },
-                    totalFinalAmount: { fontSize: 14, bold: true, padding: [5, 2] },
-                    assinaturaNome: { fontSize: 10, color: '#555', margin: [0, 5, 0, 0] },
-                },
-                defaultStyle: { font: 'Roboto' }
-            };
-
-            // 4. Gerar o PDF
-            pdfMake.createPdf(docDefinition).download(`Nota_${recebedorNome.split(' ')[0]}_${dataAtual.replace(/\//g, '-')}.pdf`);
-        }
+        });
     </script>
 </body>
 </html>

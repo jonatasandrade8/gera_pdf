@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklists & Tarefas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+    <style>
+        .checklist-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; min-height: 70vh; }
+        @media (max-width: 900px) { .checklist-layout { grid-template-columns: 1fr; } }
+        .checklist-main { min-width: 0; }
+        .add-task-form { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .add-task-form input[type="text"] { flex: 1; min-width: 150px; }
+        .add-task-form input[type="date"] { width: 140px; }
+        .add-task-form select { width: 120px; }
+        .task-drag-handle { cursor: grab; color: var(--text-muted); font-size: 1.1rem; user-select: none; }
+        .task-drag-handle:active { cursor: grabbing; }
+        .calendar-month-title { font-size: 1.2rem; font-weight: 700; text-align: center; margin-bottom: 10px; }
+        .calendar-task-item { font-size: 0.7rem; padding: 1px 4px; border-radius: 3px; margin: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .calendar-task-item.priority-high { background-color: rgba(231,76,60,0.15); color: var(--accent-red); }
+        .calendar-task-item.priority-medium { background-color: rgba(230,126,34,0.15); color: var(--accent-orange); }
+        .calendar-task-item.priority-low { background-color: rgba(46,204,113,0.15); color: var(--accent-green); }
+        .calendar-task-item.completed { opacity: 0.5; text-decoration: line-through; }
+        .modal-task-detail { max-width: 450px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link">💰 Nota</a>
+            <a href="checklist.html" class="nav-link active">✅ Checklist</a>
+            <a href="prova.html" class="nav-link">📝 Prova</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
+
+        <div class="header">
+            <h1>✅ Checklists & Organização de Tarefas</h1>
+            <p>Organize suas tarefas com checklists, calendário e visão semanal</p>
+        </div>
+
+        <div class="checklist-layout">
+            <div class="checklist-sidebar">
+                <h3>📋 Meus Checklists</h3>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalNovoChecklist()" style="width: 100%; margin-bottom: 15px;">+ Novo Checklist</button>
+                <ul class="checklist-list" id="checklistList"></ul>
+            </div>
+
+            <div class="checklist-main">
+                <div id="checklistContent">
+                    <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                        <p style="font-size: 3rem; margin-bottom: 15px;">📋</p>
+                        <p style="font-size: 1.2rem;">Selecione ou crie um checklist para começar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo Checklist -->
+    <div class="modal-overlay" id="modalNovoChecklist">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Novo Checklist</h3>
+                <button class="modal-close" onclick="fecharModal('modalNovoChecklist')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Nome do Checklist</label>
+                <input type="text" id="novoChecklistNome" placeholder="Ex: Tarefas da Semana, Compras...">
+            </div>
+            <button class="btn btn-primary" onclick="criarChecklist()">Criar Checklist</button>
+        </div>
+    </div>
+
+    <!-- Modal Nova Tarefa -->
+    <div class="modal-overlay" id="modalNovaTarefa">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTarefaTitulo">Nova Tarefa</h3>
+                <button class="modal-close" onclick="fecharModal('modalNovaTarefa')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Título da Tarefa *</label>
+                <input type="text" id="tarefaTitulo" placeholder="O que precisa ser feito?">
+            </div>
+            <div class="row">
+                <div class="form-group">
+                    <label>Prioridade</label>
+                    <select id="tarefaPrioridade">
+                        <option value="medium">Média</option>
+                        <option value="high">Alta</option>
+                        <option value="low">Baixa</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Data de Vencimento</label>
+                    <input type="date" id="tarefaData">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notas / Descrição</label>
+                <textarea id="tarefaNotas" rows="3" placeholder="Detalhes adicionais..."></textarea>
+            </div>
+            <input type="hidden" id="tarefaEditId" value="">
+            <button class="btn btn-primary" onclick="salvarTarefa()">Salvar Tarefa</button>
+        </div>
+    </div>
+
+    <!-- Modal Dia do Calendário -->
+    <div class="modal-overlay" id="modalDiaCalendario">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalDiaTitulo">Tarefas do Dia</h3>
+                <button class="modal-close" onclick="fecharModal('modalDiaCalendario')">&times;</button>
+            </div>
+            <div id="modalDiaContent"></div>
+            <button class="btn btn-primary btn-sm" onclick="adicionarTarefaNoDia()" style="margin-top: 15px;">+ Adicionar Tarefa neste dia</button>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="checklist.js"></script>
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark ? '1' : '0');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeBtn').textContent = '☀️';
+            }
+        });
+    </script>
+</body>
+</html>
