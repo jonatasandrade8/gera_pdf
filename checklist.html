@@ -3,27 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklists & Tarefas</title>
+    <title>Checklists & Planner</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
     <style>
-        .checklist-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; min-height: 70vh; }
+        .checklist-layout { display: grid; grid-template-columns: 240px 1fr; gap: 20px; min-height: 70vh; }
         @media (max-width: 900px) { .checklist-layout { grid-template-columns: 1fr; } }
         .checklist-main { min-width: 0; }
-        .add-task-form { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .add-task-form input[type="text"] { flex: 1; min-width: 150px; }
-        .add-task-form input[type="date"] { width: 140px; }
-        .add-task-form select { width: 120px; }
-        .task-drag-handle { cursor: grab; color: var(--text-muted); font-size: 1.1rem; user-select: none; }
-        .task-drag-handle:active { cursor: grabbing; }
-        .calendar-month-title { font-size: 1.2rem; font-weight: 700; text-align: center; margin-bottom: 10px; }
-        .calendar-task-item { font-size: 0.7rem; padding: 1px 4px; border-radius: 3px; margin: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-        .calendar-task-item.priority-high { background-color: rgba(231,76,60,0.15); color: var(--accent-red); }
-        .calendar-task-item.priority-medium { background-color: rgba(230,126,34,0.15); color: var(--accent-orange); }
-        .calendar-task-item.priority-low { background-color: rgba(46,204,113,0.15); color: var(--accent-green); }
-        .calendar-task-item.completed { opacity: 0.5; text-decoration: line-through; }
-        .modal-task-detail { max-width: 450px; }
+        .mode-toggle { display: flex; gap: 4px; background: var(--bg-primary); padding: 4px; border-radius: var(--radius-md); margin-bottom: 20px; }
+        .mode-toggle button { flex: 1; padding: 10px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); background: none; color: var(--text-secondary); font-weight: 600; font-size: 0.95rem; }
+        .mode-toggle button.active { background: var(--bg-secondary); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+        .item-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 4px; transition: var(--transition); }
+        .item-row:hover { box-shadow: var(--shadow-sm); }
+        .item-row .drag-handle { cursor: grab; color: var(--text-muted); font-size: 1rem; user-select: none; }
+        .item-row .drag-handle:active { cursor: grabbing; }
+        .item-row .item-name { flex: 1; font-weight: 500; }
+        .item-row .item-time { font-size: 0.85rem; color: var(--text-muted); background: var(--bg-secondary); padding: 2px 8px; border-radius: 12px; }
+        .item-row .item-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-green); }
+        .item-row .item-delete { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1rem; opacity: 0; transition: var(--transition); padding: 2px 6px; }
+        .item-row:hover .item-delete { opacity: 1; }
+        .item-row .item-delete:hover { color: var(--accent-red); }
+        .item-row.dragging { opacity: 0.4; }
+        .item-row.drag-over { border-color: var(--accent-blue); background: rgba(52,152,219,0.05); }
+        .add-item-inline { display: flex; gap: 6px; margin-bottom: 8px; }
+        .add-item-inline input[type="text"] { flex: 1; padding: 8px 12px; font-size: 0.9rem; }
+        .add-item-inline input[type="time"] { width: 100px; padding: 8px 6px; font-size: 0.9rem; }
+        .add-item-inline button { padding: 8px 14px; border: none; background: var(--accent-green); color: white; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; transition: var(--transition); }
+        .add-item-inline button:hover { background: var(--accent-green-dark); }
+        .planner-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        @media (max-width: 1000px) { .planner-grid { grid-template-columns: 1fr; } }
+        .planner-day { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; min-height: 180px; }
+        .planner-day-header { font-weight: 700; font-size: 0.85rem; text-align: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 2px solid var(--accent-blue); color: var(--accent-blue); }
+        .planner-day .item-row { padding: 5px 8px; font-size: 0.85rem; }
+        .planner-day .item-row .item-name { font-size: 0.85rem; }
+        .pdf-actions { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
+        .pdf-actions .btn { width: auto; margin: 0; flex: 1; min-width: 140px; }
+        .checklist-item-checked .item-name { text-decoration: line-through; opacity: 0.5; }
+        .sidebar-item-type { font-size: 0.7rem; padding: 1px 6px; border-radius: 8px; font-weight: 600; }
+        .sidebar-type-checklist { background: rgba(46,204,113,0.15); color: var(--accent-green); }
+        .sidebar-type-planner { background: rgba(52,152,219,0.15); color: var(--accent-blue); }
     </style>
 </head>
 <body>
@@ -38,86 +57,45 @@
         </nav>
 
         <div class="header">
-            <h1>✅ Checklists & Organização de Tarefas</h1>
-            <p>Organize suas tarefas com checklists, calendário e visão semanal</p>
+            <h1>✅ Checklists & Planner</h1>
+            <p>Crie checklists para PDF ou planeje sua semana de forma simples</p>
+        </div>
+
+        <div class="mode-toggle">
+            <button class="active" onclick="setMode('checklist')" id="btnModeChecklist">📋 Checklist</button>
+            <button onclick="setMode('planner')" id="btnModePlanner">📅 Planner Semanal</button>
         </div>
 
         <div class="checklist-layout">
             <div class="checklist-sidebar">
-                <h3>📋 Meus Checklists</h3>
-                <button class="btn btn-primary btn-sm" onclick="abrirModalNovoChecklist()" style="width: 100%; margin-bottom: 15px;">+ Novo Checklist</button>
-                <ul class="checklist-list" id="checklistList"></ul>
+                <h3 id="sidebarTitle">📋 Meus Checklists</h3>
+                <button class="btn btn-primary btn-sm" onclick="criarNovo()" style="width: 100%; margin-bottom: 15px;" id="btnNovo">+ Novo Checklist</button>
+                <ul class="checklist-list" id="listaItens"></ul>
             </div>
 
             <div class="checklist-main">
-                <div id="checklistContent">
+                <div id="conteudoPrincipal">
                     <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
-                        <p style="font-size: 3rem; margin-bottom: 15px;">📋</p>
-                        <p style="font-size: 1.2rem;">Selecione ou crie um checklist para começar</p>
+                        <p style="font-size: 3rem; margin-bottom: 15px;" id="emptyIcon">📋</p>
+                        <p style="font-size: 1.2rem;" id="emptyText">Crie um checklist para começar</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Novo Checklist -->
-    <div class="modal-overlay" id="modalNovoChecklist">
+    <!-- Modal Novo -->
+    <div class="modal-overlay" id="modalNovo">
         <div class="modal">
             <div class="modal-header">
-                <h3>Novo Checklist</h3>
-                <button class="modal-close" onclick="fecharModal('modalNovoChecklist')">&times;</button>
+                <h3 id="modalNovoTitulo">Novo Checklist</h3>
+                <button class="modal-close" onclick="fecharModal('modalNovo')">&times;</button>
             </div>
             <div class="form-group">
-                <label>Nome do Checklist</label>
-                <input type="text" id="novoChecklistNome" placeholder="Ex: Tarefas da Semana, Compras...">
+                <label>Nome</label>
+                <input type="text" id="novoNome" placeholder="" onkeydown="if(event.key==='Enter')salvarNovo()">
             </div>
-            <button class="btn btn-primary" onclick="criarChecklist()">Criar Checklist</button>
-        </div>
-    </div>
-
-    <!-- Modal Nova Tarefa -->
-    <div class="modal-overlay" id="modalNovaTarefa">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 id="modalTarefaTitulo">Nova Tarefa</h3>
-                <button class="modal-close" onclick="fecharModal('modalNovaTarefa')">&times;</button>
-            </div>
-            <div class="form-group">
-                <label>Título da Tarefa *</label>
-                <input type="text" id="tarefaTitulo" placeholder="O que precisa ser feito?">
-            </div>
-            <div class="row">
-                <div class="form-group">
-                    <label>Prioridade</label>
-                    <select id="tarefaPrioridade">
-                        <option value="medium">Média</option>
-                        <option value="high">Alta</option>
-                        <option value="low">Baixa</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Data de Vencimento</label>
-                    <input type="date" id="tarefaData">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Notas / Descrição</label>
-                <textarea id="tarefaNotas" rows="3" placeholder="Detalhes adicionais..."></textarea>
-            </div>
-            <input type="hidden" id="tarefaEditId" value="">
-            <button class="btn btn-primary" onclick="salvarTarefa()">Salvar Tarefa</button>
-        </div>
-    </div>
-
-    <!-- Modal Dia do Calendário -->
-    <div class="modal-overlay" id="modalDiaCalendario">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 id="modalDiaTitulo">Tarefas do Dia</h3>
-                <button class="modal-close" onclick="fecharModal('modalDiaCalendario')">&times;</button>
-            </div>
-            <div id="modalDiaContent"></div>
-            <button class="btn btn-primary btn-sm" onclick="adicionarTarefaNoDia()" style="margin-top: 15px;">+ Adicionar Tarefa neste dia</button>
+            <button class="btn btn-primary" onclick="salvarNovo()">Criar</button>
         </div>
     </div>
 

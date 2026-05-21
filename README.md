@@ -10,8 +10,8 @@ Crie recibos profissionais em PDF com suporte a PF/PJ, tabela dinamica de servic
 ### Nota de Valores a Receber
 Emita notas de valores com recebiveis, descontos, logo personalizado para empresas, consulta de CEP/CNPJ e exportacao em PDF.
 
-### Checklists & Tarefas (NOVO)
-Organize suas tarefas com checklists totalmente personalizaveis. Inclui visualizacao em lista, calendario mensal e visao semanal (domingo a sabado). Suporte a prioridades (alta/media/baixa), datas de vencimento, notas, drag & drop para reordenar, filtros e busca. Exporte checklists em PDF.
+### Checklists & Planner (NOVO)
+Duas ferramentas em uma. Modo **Checklist**: crie listas com nome e itens simples (ex: "Preflight", "Checklist de Viagem") para gerar PDF com checkboxes. Modo **Planner**: monte uma semana de Domingo a Sabado com tarefas e horarios opcionais por dia. Adicao rapida de itens com nome e horario. Drag & drop para reordenar. PDFs limpos e profissionais para ambos os modos.
 
 ### Criador de Provas (NOVO)
 Crie provas personalizaveis para professores e educadores. Cabecalho customizavel com instituicao, professor, disciplina, data e valor. Tipos de questoes: discursiva, verdadeiro/falso, multipla escolha, lacuna e correspondencia. Organize por secoes com instrucoes proprias. Gere PDF da prova e do gabarito separado. Templates prontos para Matematica, Portugues, Ciencias, Historia e Geografia.
@@ -59,9 +59,10 @@ gera_pdf-main/
 - **Atalhos de Teclado** - Ctrl+S para salvar, Ctrl+P para gerar PDF
 - **CSS Variables** - Sistema de design consistente com variaveis CSS
 - **Animacoes** - Fade-in, slide-in e transicoes suaves
-- **Drag & Drop** - Reordenacao de tarefas e questoes
-- **Busca e Filtros** - Dashboard com busca, checklist com filtros por status/prioridade
+- **Drag & Drop** - Reordenacao de itens e questoes
+- **Busca e Filtros** - Dashboard com busca
 - **Templates** - Provas com templates prontos por disciplina
+- **2 Modos no Checklist** - Checklist PDF simples ou Planner semanal com horarios
 
 ## Contribuicoes
 

@@ -1,546 +1,400 @@
-/* checklist.js - Checklists & Organização de Tarefas */
+/* checklist.js - Checklists & Planner Semanal (Simplificado) */
 
-const CHECKLISTS_KEY = 'checklists_app';
-let checklists = [];
-let activeChecklistId = null;
-let currentView = 'list';
-let calendarDate = new Date();
-let weekStart = getWeekStart(new Date());
-let draggedTask = null;
+const STORAGE_KEY = 'checklists_planner_v2';
+let itens = [];
+let ativoId = null;
+let modo = 'checklist';
+let draggedItem = null;
+let draggedDia = null;
+
+const DIAS_SEMANA = [
+    { key: 'dom', nome: 'Domingo' },
+    { key: 'seg', nome: 'Segunda' },
+    { key: 'ter', nome: 'Terça' },
+    { key: 'qua', nome: 'Quarta' },
+    { key: 'qui', nome: 'Quinta' },
+    { key: 'sex', nome: 'Sexta' },
+    { key: 'sab', nome: 'Sábado' }
+];
 
 document.addEventListener('DOMContentLoaded', () => {
-    checklists = storageGet(CHECKLISTS_KEY);
-    renderChecklistList();
-    if (checklists.length > 0) {
-        selecionarChecklist(checklists[0].id);
-    }
+    itens = storageGet(STORAGE_KEY);
+    renderSidebar();
+    if (itens.length > 0) selecionarItem(itens[0].id);
 });
 
-// === CHECKLISTS ===
+function salvar() { storageSet(STORAGE_KEY, itens); }
+function getAtivo() { return itens.find(i => i.id === ativoId); }
+function fecharModal(id) { document.getElementById(id).classList.remove('active'); }
 
-function salvarChecklists() { storageSet(CHECKLISTS_KEY, checklists); }
+// === MODO ===
 
-function getActiveChecklist() { return checklists.find(c => c.id === activeChecklistId); }
-
-function abrirModalNovoChecklist() {
-    document.getElementById('novoChecklistNome').value = '';
-    document.getElementById('modalNovoChecklist').classList.add('active');
-    setTimeout(() => document.getElementById('novoChecklistNome').focus(), 100);
-}
-
-function criarChecklist() {
-    const nome = document.getElementById('novoChecklistNome').value.trim();
-    if (!nome) { showToast('Digite um nome para o checklist.', 'warning'); return; }
-    const novo = { id: gerarId(), nome: nome, tarefas: [], criadoEm: hojeISO() };
-    checklists.push(novo);
-    salvarChecklists();
-    renderChecklistList();
-    selecionarChecklist(novo.id);
-    fecharModal('modalNovoChecklist');
-    showToast(`Checklist "${nome}" criado!`, 'success');
-}
-
-function deletarChecklist(id, e) {
-    e.stopPropagation();
-    const cl = checklists.find(c => c.id === id);
-    if (!confirm(`Excluir checklist "${cl.nome}" e todas as tarefas?`)) return;
-    checklists = checklists.filter(c => c.id !== id);
-    salvarChecklists();
-    if (activeChecklistId === id) {
-        activeChecklistId = null;
-        document.getElementById('checklistContent').innerHTML = '<div style="text-align: center; padding: 60px 20px; color: var(--text-muted);"><p style="font-size: 3rem; margin-bottom: 15px;">📋</p><p>Selecione ou crie um checklist para começar</p></div>';
+function setMode(m) {
+    modo = m;
+    document.getElementById('btnModeChecklist').classList.toggle('active', m === 'checklist');
+    document.getElementById('btnModePlanner').classList.toggle('active', m === 'planner');
+    document.getElementById('sidebarTitle').textContent = m === 'checklist' ? '📋 Meus Checklists' : '📅 Meus Planners';
+    document.getElementById('btnNovo').textContent = m === 'checklist' ? '+ Novo Checklist' : '+ Novo Planner';
+    document.getElementById('emptyIcon').textContent = m === 'checklist' ? '📋' : '📅';
+    document.getElementById('emptyText').textContent = m === 'checklist' ? 'Crie um checklist para começar' : 'Crie um planner para começar';
+    if (ativoId) {
+        const ativo = getAtivo();
+        if (ativo && ativo.tipo !== m) { ativoId = null; document.getElementById('conteudoPrincipal').innerHTML = `<div style="text-align: center; padding: 60px 20px; color: var(--text-muted);"><p style="font-size: 3rem; margin-bottom: 15px;">${m === 'checklist' ? '📋' : '📅'}</p><p>${m === 'checklist' ? 'Selecione ou crie um checklist' : 'Selecione ou crie um planner'}</p></div>`; }
+        else if (ativo) renderConteudo();
     }
-    renderChecklistList();
-    showToast('Checklist excluído.', 'info');
+    renderSidebar();
 }
 
-function renderChecklistList() {
-    const lista = document.getElementById('checklistList');
+// === CRIAR / DELETAR ===
+
+function criarNovo() {
+    document.getElementById('novoNome').value = '';
+    document.getElementById('modalNovoTitulo').textContent = modo === 'checklist' ? 'Novo Checklist' : 'Novo Planner';
+    document.getElementById('novoNome').placeholder = modo === 'checklist' ? 'Ex: Preflight, Checklist de Viagem...' : 'Ex: Semana 20-26 Maio';
+    document.getElementById('modalNovo').classList.add('active');
+    setTimeout(() => document.getElementById('novoNome').focus(), 100);
+}
+
+function salvarNovo() {
+    const nome = document.getElementById('novoNome').value.trim();
+    if (!nome) { showToast('Digite um nome.', 'warning'); return; }
+    const novo = { id: gerarId(), nome: nome, tipo: modo };
+    if (modo === 'checklist') {
+        novo.itens = [];
+    } else {
+        novo.dias = {};
+        DIAS_SEMANA.forEach(d => { novo.dias[d.key] = []; });
+    }
+    itens.push(novo);
+    salvar();
+    fecharModal('modalNovo');
+    selecionarItem(novo.id);
+    renderSidebar();
+    showToast(`${modo === 'checklist' ? 'Checklist' : 'Planner'} "${nome}" criado!`, 'success');
+}
+
+function deletarItem(id, e) {
+    e.stopPropagation();
+    const item = itens.find(i => i.id === id);
+    if (!confirm(`Excluir "${item.nome}"?`)) return;
+    itens = itens.filter(i => i.id !== id);
+    salvar();
+    if (ativoId === id) {
+        ativoId = null;
+        document.getElementById('conteudoPrincipal').innerHTML = `<div style="text-align: center; padding: 60px 20px; color: var(--text-muted);"><p style="font-size: 3rem; margin-bottom: 15px;">${modo === 'checklist' ? '📋' : '📅'}</p><p>${modo === 'checklist' ? 'Selecione ou crie um checklist' : 'Selecione ou crie um planner'}</p></div>`;
+    }
+    renderSidebar();
+    showToast('Excluído.', 'info');
+}
+
+// === SIDEBAR ===
+
+function renderSidebar() {
+    const lista = document.getElementById('listaItens');
+    const filtrados = itens.filter(i => i.tipo === modo);
     lista.innerHTML = '';
-    checklists.forEach(cl => {
-        const total = cl.tarefas.length;
-        const concluidas = cl.tarefas.filter(t => t.concluida).length;
-        const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+    if (filtrados.length === 0) {
+        lista.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 15px; font-size: 0.9rem;">Nenhum ${modo === 'checklist' ? 'checklist' : 'planner'} criado.</p>`;
+        return;
+    }
+    filtrados.forEach(item => {
         const li = document.createElement('li');
-        li.className = `checklist-list-item ${cl.id === activeChecklistId ? 'active' : ''}`;
-        li.onclick = () => selecionarChecklist(cl.id);
+        li.className = `checklist-list-item ${item.id === ativoId ? 'active' : ''}`;
+        li.onclick = () => selecionarItem(item.id);
+        const count = item.tipo === 'checklist' ? item.itens.length : Object.values(item.dias || {}).reduce((s, d) => s + d.length, 0);
         li.innerHTML = `
             <div style="flex: 1;">
-                <div style="font-weight: 600;">${cl.nome}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">${concluidas}/${total} concluídas (${pct}%)</div>
-                <div class="progress-bar" style="margin-top: 4px;"><div class="progress-bar-fill" style="width: ${pct}%;"></div></div>
+                <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                    ${item.nome}
+                    <span class="sidebar-item-type ${item.tipo === 'checklist' ? 'sidebar-type-checklist' : 'sidebar-type-planner'}">${item.tipo === 'checklist' ? 'CK' : 'PL'}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${count} ${count === 1 ? 'item' : 'itens'}</div>
             </div>
-            <button class="delete-checklist" onclick="deletarChecklist('${cl.id}', event)" title="Excluir">🗑️</button>
+            <button class="delete-checklist" onclick="deletarItem('${item.id}', event)" title="Excluir">🗑️</button>
         `;
         lista.appendChild(li);
     });
 }
 
-function selecionarChecklist(id) {
-    activeChecklistId = id;
-    renderChecklistList();
-    currentView = 'list';
-    renderChecklistContent();
+function selecionarItem(id) {
+    ativoId = id;
+    renderSidebar();
+    renderConteudo();
 }
 
-// === TAREFAS ===
+// === CHECKLIST ===
 
-function abrirModalTarefa(editId = null) {
-    document.getElementById('tarefaEditId').value = editId || '';
-    document.getElementById('modalTarefaTitulo').textContent = editId ? 'Editar Tarefa' : 'Nova Tarefa';
-    if (editId) {
-        const cl = getActiveChecklist();
-        const task = cl.tarefas.find(t => t.id === editId);
-        document.getElementById('tarefaTitulo').value = task.titulo;
-        document.getElementById('tarefaPrioridade').value = task.prioridade;
-        document.getElementById('tarefaData').value = task.data || '';
-        document.getElementById('tarefaNotas').value = task.notas || '';
-    } else {
-        document.getElementById('tarefaTitulo').value = '';
-        document.getElementById('tarefaPrioridade').value = 'medium';
-        document.getElementById('tarefaData').value = '';
-        document.getElementById('tarefaNotas').value = '';
-    }
-    document.getElementById('modalNovaTarefa').classList.add('active');
-    setTimeout(() => document.getElementById('tarefaTitulo').focus(), 100);
+function adicionarItemChecklist(nome) {
+    if (!nome.trim()) return;
+    const cl = getAtivo();
+    cl.itens.push({ id: gerarId(), nome: nome.trim(), checked: false });
+    salvar();
+    renderConteudo();
+    renderSidebar();
 }
 
-function salvarTarefa() {
-    const titulo = document.getElementById('tarefaTitulo').value.trim();
-    if (!titulo) { showToast('Digite o título da tarefa.', 'warning'); return; }
-    const cl = getActiveChecklist();
-    if (!cl) return;
-    const editId = document.getElementById('tarefaEditId').value;
-    const tarefa = {
-        id: editId || gerarId(),
-        titulo: titulo,
-        prioridade: document.getElementById('tarefaPrioridade').value,
-        data: document.getElementById('tarefaData').value,
-        notas: document.getElementById('tarefaNotas').value.trim(),
-        concluida: false,
-        criadaEm: hojeISO()
-    };
-    if (editId) {
-        const idx = cl.tarefas.findIndex(t => t.id === editId);
-        tarefa.concluida = cl.tarefas[idx].concluida;
-        tarefa.criadaEm = cl.tarefas[idx].criadaEm;
-        cl.tarefas[idx] = tarefa;
-        showToast('Tarefa atualizada!', 'success');
-    } else {
-        cl.tarefas.push(tarefa);
-        showToast('Tarefa adicionada!', 'success');
-    }
-    salvarChecklists();
-    fecharModal('modalNovaTarefa');
-    renderChecklistContent();
-    renderChecklistList();
+function toggleChecklistItem(itemId) {
+    const cl = getAtivo();
+    const item = cl.itens.find(i => i.id === itemId);
+    item.checked = !item.checked;
+    salvar();
+    renderConteudo();
 }
 
-function toggleTarefa(taskId) {
-    const cl = getActiveChecklist();
-    const task = cl.tarefas.find(t => t.id === taskId);
-    task.concluida = !task.concluida;
-    salvarChecklists();
-    renderChecklistContent();
-    renderChecklistList();
+function deletarChecklistItem(itemId) {
+    const cl = getAtivo();
+    cl.itens = cl.itens.filter(i => i.id !== itemId);
+    salvar();
+    renderConteudo();
+    renderSidebar();
 }
 
-function deletarTarefa(taskId) {
-    const cl = getActiveChecklist();
-    cl.tarefas = cl.tarefas.filter(t => t.id !== taskId);
-    salvarChecklists();
-    renderChecklistContent();
-    renderChecklistList();
-    showToast('Tarefa removida.', 'info');
+// === PLANNER ===
+
+function adicionarItemPlanner(diaKey, nome, horario) {
+    if (!nome.trim()) return;
+    const pl = getAtivo();
+    pl.dias[diaKey].push({ id: gerarId(), nome: nome.trim(), horario: horario || '' });
+    salvar();
+    renderConteudo();
+    renderSidebar();
 }
 
-function isOverdue(dateStr) {
-    if (!dateStr) return false;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const due = new Date(dateStr + 'T00:00:00');
-    return due < today;
+function deletarPlannerItem(diaKey, itemId) {
+    const pl = getAtivo();
+    pl.dias[diaKey] = pl.dias[diaKey].filter(i => i.id !== itemId);
+    salvar();
+    renderConteudo();
+    renderSidebar();
 }
 
 // === DRAG & DROP ===
 
-function onDragStart(e, taskId) {
-    draggedTask = taskId;
-    e.target.closest('.task-card').classList.add('dragging');
+function onDragStart(e, itemId) {
+    draggedItem = itemId;
+    draggedDia = null;
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragStartPlanner(e, diaKey, itemId) {
+    draggedItem = itemId;
+    draggedDia = diaKey;
+    e.target.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
 }
 
 function onDragEnd(e) {
-    e.target.closest('.task-card')?.classList.remove('dragging');
-    document.querySelectorAll('.task-card').forEach(c => c.classList.remove('drag-over'));
-    draggedTask = null;
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+    draggedItem = null;
+    draggedDia = null;
 }
 
-function onDragOver(e) {
+function onDragOver(e) { e.preventDefault(); e.target.closest('.item-row')?.classList.add('drag-over'); }
+function onDragLeave(e) { e.target.closest('.item-row')?.classList.remove('drag-over'); }
+
+function onDropChecklist(e, targetId) {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const card = e.target.closest('.task-card');
-    if (card) card.classList.add('drag-over');
+    e.target.closest('.item-row')?.classList.remove('drag-over');
+    if (!draggedItem || draggedItem === targetId) return;
+    const cl = getAtivo();
+    const from = cl.itens.findIndex(i => i.id === draggedItem);
+    const to = cl.itens.findIndex(i => i.id === targetId);
+    const [moved] = cl.itens.splice(from, 1);
+    cl.itens.splice(to, 0, moved);
+    salvar();
+    renderConteudo();
 }
 
-function onDragLeave(e) {
-    const card = e.target.closest('.task-card');
-    if (card) card.classList.remove('drag-over');
-}
-
-function onDrop(e, targetTaskId) {
+function onDropPlanner(e, diaKey, targetId) {
     e.preventDefault();
-    const card = e.target.closest('.task-card');
-    if (card) card.classList.remove('drag-over');
-    if (!draggedTask || draggedTask === targetTaskId) return;
-    const cl = getActiveChecklist();
-    const fromIdx = cl.tarefas.findIndex(t => t.id === draggedTask);
-    const toIdx = cl.tarefas.findIndex(t => t.id === targetTaskId);
-    const [moved] = cl.tarefas.splice(fromIdx, 1);
-    cl.tarefas.splice(toIdx, 0, moved);
-    salvarChecklists();
-    renderChecklistContent();
-}
-
-// === FILTROS ===
-
-function filtrarTarefas(filtro) {
-    const cl = getActiveChecklist();
-    if (!cl) return [];
-    let tarefas = [...cl.tarefas];
-    if (filtro === 'pendentes') tarefas = tarefas.filter(t => !t.concluida);
-    else if (filtro === 'concluidas') tarefas = tarefas.filter(t => t.concluida);
-    else if (filtro === 'high' || filtro === 'medium' || filtro === 'low') tarefas = tarefas.filter(t => t.prioridade === filtro);
-    return tarefas;
-}
-
-function buscarTarefas(query) {
-    const cl = getActiveChecklist();
-    if (!cl) return [];
-    const q = query.toLowerCase();
-    return cl.tarefas.filter(t => t.titulo.toLowerCase().includes(q) || (t.notas && t.notas.toLowerCase().includes(q)));
+    e.target.closest('.item-row')?.classList.remove('drag-over');
+    if (!draggedItem) return;
+    const pl = getAtivo();
+    const sourceDia = draggedDia || diaKey;
+    const fromIdx = pl.dias[sourceDia].findIndex(i => i.id === draggedItem);
+    if (fromIdx === -1) return;
+    const toIdx = pl.dias[diaKey].findIndex(i => i.id === targetId);
+    const [moved] = pl.dias[sourceDia].splice(fromIdx, 1);
+    pl.dias[diaKey].splice(toIdx === -1 ? pl.dias[diaKey].length : toIdx, 0, moved);
+    salvar();
+    draggedItem = null;
+    draggedDia = null;
+    renderConteudo();
 }
 
 // === RENDERIZAÇÃO ===
 
-function renderChecklistContent() {
-    const cl = getActiveChecklist();
-    if (!cl) return;
-    const content = document.getElementById('checklistContent');
-    if (currentView === 'list') {
-        renderListView(content, cl);
-    } else if (currentView === 'calendar') {
-        renderCalendarView(content, cl);
-    } else if (currentView === 'weekly') {
-        renderWeeklyView(content, cl);
-    }
+function renderConteudo() {
+    const ativo = getAtivo();
+    if (!ativo) return;
+    if (ativo.tipo === 'checklist') renderChecklistView(ativo);
+    else renderPlannerView(ativo);
 }
 
-function renderListView(container, cl) {
-    const total = cl.tarefas.length;
-    const concluidas = cl.tarefas.filter(t => t.concluida).length;
-    const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+function renderChecklistView(cl) {
+    const container = document.getElementById('conteudoPrincipal');
+    const total = cl.itens.length;
+    const checked = cl.itens.filter(i => i.checked).length;
 
     container.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-            <h2 style="margin: 0;">${cl.nome}</h2>
-            <div class="view-toggle">
-                <button class="${currentView === 'list' ? 'active' : ''}" onclick="mudarView('list')">📋 Lista</button>
-                <button class="${currentView === 'calendar' ? 'active' : ''}" onclick="mudarView('calendar')">📅 Calendário</button>
-                <button class="${currentView === 'weekly' ? 'active' : ''}" onclick="mudarView('weekly')">📆 Semanal</button>
-            </div>
+        <h2 style="margin-bottom: 15px;">📋 ${cl.nome}</h2>
+        <div style="display: flex; gap: 6px; margin-bottom: 15px;" class="add-item-inline">
+            <input type="text" id="novoItemInput" placeholder="Nome do item..." onkeydown="if(event.key==='Enter'){ adicionarItemChecklist(this.value); this.value=''; }">
+            <button onclick="adicionarItemChecklist(document.getElementById('novoItemInput').value); document.getElementById('novoItemInput').value='';">+</button>
         </div>
-        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 200px;">
-                <div class="progress-bar"><div class="progress-bar-fill" style="width: ${pct}%;"></div></div>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">${concluidas}/${total} concluídas (${pct}%)</span>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="abrirModalTarefa()" style="width: auto; margin: 0;">+ Nova Tarefa</button>
-            <button class="btn btn-secondary btn-sm" onclick="gerarPDFChecklist()" style="width: auto; margin: 0;">📥 PDF</button>
-        </div>
-        <div class="filter-bar">
-            <input type="text" placeholder="🔍 Buscar tarefas..." oninput="renderFilteredTasks(this.value, document.getElementById('filterSelect').value)">
-            <select id="filterSelect" onchange="renderFilteredTasks(document.querySelector('.filter-bar input').value, this.value)">
-                <option value="todas">Todas</option>
-                <option value="pendentes">Pendentes</option>
-                <option value="concluidas">Concluídas</option>
-                <option value="high">🔴 Alta</option>
-                <option value="medium">🟡 Média</option>
-                <option value="low">🟢 Baixa</option>
-            </select>
-        </div>
-        <div id="taskList"></div>
+        <div id="checklistItems">
     `;
-    renderTaskList(cl.tarefas);
-}
 
-function renderFilteredTasks(query, filtro) {
-    let tarefas = getActiveChecklist()?.tarefas || [];
-    if (query) tarefas = tarefas.filter(t => t.titulo.toLowerCase().includes(query.toLowerCase()) || (t.notas && t.notas.toLowerCase().includes(query.toLowerCase())));
-    if (filtro === 'pendentes') tarefas = tarefas.filter(t => !t.concluida);
-    else if (filtro === 'concluidas') tarefas = tarefas.filter(t => t.concluida);
-    else if (['high', 'medium', 'low'].includes(filtro)) tarefas = tarefas.filter(t => t.prioridade === filtro);
-    renderTaskList(tarefas);
-}
-
-function renderTaskList(tarefas) {
-    const container = document.getElementById('taskList');
-    if (!container) return;
-    if (tarefas.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhuma tarefa encontrada.</p>';
-        return;
-    }
-    container.innerHTML = '';
-    tarefas.forEach(task => {
-        const overdue = !task.concluida && isOverdue(task.data);
-        const card = document.createElement('div');
-        card.className = `task-card draggable ${task.concluida ? 'completed' : ''}`;
-        card.draggable = true;
-        card.ondragstart = (e) => onDragStart(e, task.id);
-        card.ondragend = onDragEnd;
-        card.ondragover = onDragOver;
-        card.ondragleave = onDragLeave;
-        card.ondrop = (e) => onDrop(e, task.id);
-        card.innerHTML = `
-            <span class="task-drag-handle" title="Arrastar para reordenar">⠿</span>
-            <input type="checkbox" class="task-checkbox" ${task.concluida ? 'checked' : ''} onchange="toggleTarefa('${task.id}')">
-            <div class="task-content">
-                <div class="task-title">${task.titulo}</div>
-                <div class="task-meta">
-                    <span class="badge badge-priority-${task.prioridade}">${task.prioridade === 'high' ? 'Alta' : task.prioridade === 'medium' ? 'Média' : 'Baixa'}</span>
-                    ${task.data ? `<span class="task-date ${overdue ? 'overdue' : ''}">📅 ${formatarDataCurta(task.data)}${overdue ? ' (Vencida!)' : ''}</span>` : ''}
-                </div>
-                ${task.notas ? `<div class="task-notes">${task.notas}</div>` : ''}
-            </div>
-            <div class="task-actions">
-                <button class="task-action-btn" onclick="abrirModalTarefa('${task.id}')" title="Editar">✏️</button>
-                <button class="task-action-btn" onclick="deletarTarefa('${task.id}')" title="Excluir">🗑️</button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-// === CALENDÁRIO ===
-
-function renderCalendarView(container, cl) {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    const tasksByDate = {};
-    cl.tarefas.forEach(t => { if (t.data) { if (!tasksByDate[t.data]) tasksByDate[t.data] = []; tasksByDate[t.data].push(t); } });
-
-    let cells = '';
-    dayNames.forEach(d => { cells += `<div class="calendar-header-cell">${d}</div>`; });
-
-    const prevMonthDays = new Date(year, month, 0).getDate();
-    for (let i = firstDay - 1; i >= 0; i--) {
-        const day = prevMonthDays - i;
-        cells += `<div class="calendar-day other-month"><div class="calendar-day-number">${day}</div></div>`;
-    }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const isToday = dateStr === todayStr;
-        const dayTasks = tasksByDate[dateStr] || [];
-        const hasTasks = dayTasks.length > 0;
-        let taskDots = '';
-        dayTasks.slice(0, 3).forEach(t => {
-            const cor = t.prioridade === 'high' ? 'var(--accent-red)' : t.prioridade === 'medium' ? 'var(--accent-orange)' : 'var(--accent-green)';
-            taskDots += `<span class="calendar-task-dot" style="background-color: ${cor};" title="${t.titulo}"></span>`;
-        });
-        let taskItems = '';
-        dayTasks.slice(0, 2).forEach(t => {
-            taskItems += `<div class="calendar-task-item priority-${t.prioridade} ${t.concluida ? 'completed' : ''}" onclick="event.stopPropagation(); abrirModalTarefa('${t.id}')">${t.titulo}</div>`;
-        });
-
-        cells += `<div class="calendar-day ${isToday ? 'today' : ''} ${hasTasks ? 'has-tasks' : ''}" onclick="abrirDiaCalendario('${dateStr}')">
-            <div class="calendar-day-number">${d}</div>
-            <div>${taskDots}</div>
-            <div>${taskItems}</div>
-        </div>`;
-    }
-
-    const totalCells = firstDay + daysInMonth;
-    const remaining = (7 - (totalCells % 7)) % 7;
-    for (let i = 1; i <= remaining; i++) {
-        cells += `<div class="calendar-day other-month"><div class="calendar-day-number">${i}</div></div>`;
-    }
-
-    container.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-            <h2 style="margin: 0;">${cl.nome} - Calendário</h2>
-            <div class="view-toggle">
-                <button onclick="mudarView('list')">📋 Lista</button>
-                <button class="active" onclick="mudarView('calendar')">📅 Calendário</button>
-                <button onclick="mudarView('weekly')">📆 Semanal</button>
-            </div>
-        </div>
-        <div class="calendar-nav">
-            <button onclick="calendarNav(-1)">◀ Anterior</button>
-            <span class="calendar-month-title">${monthNames[month]} ${year}</span>
-            <button onclick="calendarNav(1)">Próximo ▶</button>
-        </div>
-        <div class="calendar-grid">${cells}</div>
-    `;
-}
-
-function calendarNav(dir) {
-    calendarDate.setMonth(calendarDate.getMonth() + dir);
-    renderChecklistContent();
-}
-
-function abrirDiaCalendario(dateStr) {
-    const cl = getActiveChecklist();
-    const dayTasks = cl.tarefas.filter(t => t.data === dateStr);
-    const [ano, mes, dia] = dateStr.split('-');
-    document.getElementById('modalDiaTitulo').textContent = `Tarefas - ${dia}/${mes}/${ano}`;
-    const content = document.getElementById('modalDiaContent');
-    if (dayTasks.length === 0) {
-        content.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhuma tarefa neste dia.</p>';
+    if (total === 0) {
+        container.innerHTML += '<p style="text-align: center; color: var(--text-muted); padding: 30px;">Nenhum item. Adicione acima.</p>';
     } else {
-        content.innerHTML = dayTasks.map(t => `
-            <div class="task-card ${t.concluida ? 'completed' : ''}" style="margin-bottom: 8px;">
-                <input type="checkbox" class="task-checkbox" ${t.concluida ? 'checked' : ''} onchange="toggleTarefa('${t.id}'); abrirDiaCalendario('${dateStr}');">
-                <div class="task-content">
-                    <div class="task-title">${t.titulo}</div>
-                    <div class="task-meta"><span class="badge badge-priority-${t.prioridade}">${t.prioridade === 'high' ? 'Alta' : t.prioridade === 'medium' ? 'Média' : 'Baixa'}</span></div>
-                    ${t.notas ? `<div class="task-notes">${t.notas}</div>` : ''}
+        cl.itens.forEach(item => {
+            container.innerHTML += `
+                <div class="item-row ${item.checked ? 'checklist-item-checked' : ''}" draggable="true" ondragstart="onDragStart(event, '${item.id}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropChecklist(event, '${item.id}')">
+                    <span class="drag-handle" title="Arrastar">⠿</span>
+                    <input type="checkbox" class="item-check" ${item.checked ? 'checked' : ''} onchange="toggleChecklistItem('${item.id}')">
+                    <span class="item-name">${item.nome}</span>
+                    <button class="item-delete" onclick="deletarChecklistItem('${item.id}')" title="Remover">✕</button>
                 </div>
-                <div class="task-actions">
-                    <button class="task-action-btn" onclick="abrirModalTarefa('${t.id}'); fecharModal('modalDiaCalendario');">✏️</button>
-                    <button class="task-action-btn" onclick="deletarTarefa('${t.id}'); abrirDiaCalendario('${dateStr}');">🗑️</button>
-                </div>
-            </div>
-        `).join('');
-    }
-    document.getElementById('modalDiaCalendario').dataset.date = dateStr;
-    document.getElementById('modalDiaCalendario').classList.add('active');
-}
-
-function adicionarTarefaNoDia() {
-    const dateStr = document.getElementById('modalDiaCalendario').dataset.date;
-    fecharModal('modalDiaCalendario');
-    abrirModalTarefa();
-    setTimeout(() => { document.getElementById('tarefaData').value = dateStr; }, 100);
-}
-
-// === VISÃO SEMANAL ===
-
-function getWeekStart(date) {
-    const d = new Date(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
-    d.setHours(0, 0, 0, 0);
-    return d;
-}
-
-function renderWeeklyView(container, cl) {
-    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    const ws = getWeekStart(weekStart);
-    const we = new Date(ws); we.setDate(we.getDate() + 6);
-    const todayStr = hojeISO();
-
-    const tasksByDate = {};
-    cl.tarefas.forEach(t => { if (t.data) { if (!tasksByDate[t.data]) tasksByDate[t.data] = []; tasksByDate[t.data].push(t); } });
-
-    let columns = '';
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(ws); d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        const isToday = dateStr === todayStr;
-        const dayTasks = tasksByDate[dateStr] || [];
-        const tasksHTML = dayTasks.map(t => `
-            <div class="weekly-task priority-${t.prioridade} ${t.concluida ? 'completed' : ''}" onclick="abrirModalTarefa('${t.id}')">
-                ${t.titulo}
-            </div>
-        `).join('');
-
-        columns += `<div class="weekly-day" style="${isToday ? 'border-color: var(--accent-blue); background-color: rgba(52,152,219,0.05);' : ''}">
-            <div class="weekly-day-header">${dayNames[i]}<br><span style="font-size: 0.75rem; color: var(--text-muted);">${d.getDate()}/${d.getMonth() + 1}</span></div>
-            ${tasksHTML}
-        </div>`;
+            `;
+        });
     }
 
-    container.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-            <h2 style="margin: 0;">${cl.nome} - Visão Semanal</h2>
-            <div class="view-toggle">
-                <button onclick="mudarView('list')">📋 Lista</button>
-                <button onclick="mudarView('calendar')">📅 Calendário</button>
-                <button class="active" onclick="mudarView('weekly')">📆 Semanal</button>
-            </div>
+    container.innerHTML += `</div>
+        <div class="pdf-actions">
+            <button class="btn btn-secondary" onclick="gerarPDFChecklist()">📥 Gerar PDF Checklist</button>
         </div>
-        <div class="calendar-nav">
-            <button onclick="weekNav(-1)">◀ Semana Anterior</button>
-            <span class="calendar-month-title">${ws.getDate()}/${ws.getMonth() + 1} - ${we.getDate()}/${we.getMonth() + 1}/${we.getFullYear()}</span>
-            <button onclick="weekNav(1)">Próxima Semana ▶</button>
-        </div>
-        <div class="weekly-grid">${columns}</div>
     `;
+
+    setTimeout(() => document.getElementById('novoItemInput')?.focus(), 50);
 }
 
-function weekNav(dir) {
-    weekStart.setDate(weekStart.getDate() + (dir * 7));
-    renderChecklistContent();
+function renderPlannerView(pl) {
+    const container = document.getElementById('conteudoPrincipal');
+    let html = `<h2 style="margin-bottom: 15px;">📅 ${pl.nome}</h2><div class="planner-grid">`;
+
+    DIAS_SEMANA.forEach(dia => {
+        const diaItens = pl.dias[dia.key] || [];
+        html += `<div class="planner-day">
+            <div class="planner-day-header">${dia.nome}</div>
+            <div class="add-item-inline" style="margin-bottom: 6px;">
+                <input type="text" id="plannerInput_${dia.key}" placeholder="Tarefa..." style="font-size: 0.8rem; padding: 5px 8px;" onkeydown="if(event.key==='Enter'){ adicionarPlannerEnter('${dia.key}'); }">
+                <input type="time" id="plannerTime_${dia.key}" style="font-size: 0.8rem; padding: 5px 4px; width: 80px;">
+                <button onclick="adicionarPlannerEnter('${dia.key}')" style="padding: 5px 10px; font-size: 0.85rem;">+</button>
+            </div>
+            <div id="plannerItems_${dia.key}">`;
+
+        if (diaItens.length === 0) {
+            html += '<p style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 10px 0;">Vazio</p>';
+        } else {
+            diaItens.forEach(item => {
+                html += `
+                    <div class="item-row" draggable="true" ondragstart="onDragStartPlanner(event, '${dia.key}', '${item.id}')" ondragend="onDragEnd(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropPlanner(event, '${dia.key}', '${item.id}')">
+                        <span class="drag-handle" title="Arrastar">⠿</span>
+                        <span class="item-name">${item.nome}</span>
+                        ${item.horario ? `<span class="item-time">${item.horario}</span>` : ''}
+                        <button class="item-delete" onclick="deletarPlannerItem('${dia.key}', '${item.id}')" title="Remover">✕</button>
+                    </div>
+                `;
+            });
+        }
+
+        html += '</div></div>';
+    });
+
+    html += `</div>
+        <div class="pdf-actions">
+            <button class="btn btn-secondary" onclick="gerarPDFPlanner()">📥 Gerar PDF Planner</button>
+        </div>
+    `;
+
+    container.innerHTML = html;
 }
 
-function mudarView(view) {
-    currentView = view;
-    renderChecklistContent();
+function adicionarPlannerEnter(diaKey) {
+    const input = document.getElementById(`plannerInput_${diaKey}`);
+    const timeInput = document.getElementById(`plannerTime_${diaKey}`);
+    if (!input.value.trim()) return;
+    adicionarItemPlanner(diaKey, input.value, timeInput?.value || '');
 }
 
-// === MODAL ===
-
-function fecharModal(id) { document.getElementById(id).classList.remove('active'); }
-
-document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
-});
-
-// === PDF ===
+// === PDF CHECKLIST ===
 
 function gerarPDFChecklist() {
-    const cl = getActiveChecklist();
-    if (!cl) { showToast('Selecione um checklist.', 'warning'); return; }
-    const total = cl.tarefas.length;
-    const concluidas = cl.tarefas.filter(t => t.concluida).length;
+    const cl = getAtivo();
+    if (!cl || cl.itens.length === 0) { showToast('Adicione pelo menos um item.', 'warning'); return; }
 
-    const tableBody = [
-        [{ text: '#', style: 'tableHeader' }, { text: 'TAREFA', style: 'tableHeader' }, { text: 'PRIORIDADE', style: 'tableHeader' }, { text: 'VENCIMENTO', style: 'tableHeader' }, { text: 'STATUS', style: 'tableHeader' }]
-    ];
-
-    cl.tarefas.forEach((t, i) => {
-        tableBody.push([
-            (i + 1).toString(),
-            { text: t.titulo, fontSize: 10 },
-            { text: t.prioridade === 'high' ? 'Alta' : t.prioridade === 'medium' ? 'Média' : 'Baixa', fontSize: 9, alignment: 'center' },
-            { text: t.data ? formatarDataCurta(t.data) : '-', fontSize: 9, alignment: 'center' },
-            { text: t.concluida ? '✅ Concluída' : '⬜ Pendente', fontSize: 9, alignment: 'center' }
-        ]);
-    });
+    const tableBody = cl.itens.map((item, i) => [
+        { text: (i + 1).toString(), alignment: 'center', fontSize: 10, width: 30 },
+        { text: item.nome, fontSize: 11 },
+        { text: '☐', alignment: 'center', fontSize: 14, width: 30 }
+    ]);
 
     const docDefinition = {
         pageSize: 'A4', pageMargins: [40, 60, 40, 40],
-        header: { text: `CHECKLIST: ${cl.nome.toUpperCase()}`, style: 'header', alignment: 'center', margin: [0, 20, 0, 10] },
+        header: { text: cl.nome.toUpperCase(), style: 'header', alignment: 'center', margin: [0, 20, 0, 10] },
         content: [
-            { text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')} | ${concluidas}/${total} concluídas`, alignment: 'center', fontSize: 10, color: '#666', margin: [0, 0, 0, 20] },
-            { table: { headerRows: 1, widths: [30, '*', 80, 80, 80], body: tableBody }, layout: 'lightHorizontalLines' },
+            { text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')} | ${cl.itens.length} itens`, alignment: 'center', fontSize: 9, color: '#888', margin: [0, 0, 0, 20] },
+            { table: { widths: [30, '*', 30], body: tableBody, headerRows: 0 }, layout: { hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#ddd', paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 6, paddingBottom: () => 6 } },
             { text: '\n' },
-            { text: `Progresso: ${total > 0 ? Math.round((concluidas / total) * 100) : 0}% concluído`, alignment: 'center', fontSize: 11, bold: true }
+            { text: 'Observações:', bold: true, fontSize: 11, margin: [0, 20, 0, 5] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#ccc' }], margin: [0, 0, 0, 15] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#ccc' }], margin: [0, 0, 0, 15] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#ccc' }] }
         ],
-        styles: {
-            header: { fontSize: 18, bold: true, color: '#2c3e50' },
-            tableHeader: { bold: true, fontSize: 10, color: '#FFFFFF', fillColor: '#34495e', alignment: 'center' }
-        },
+        styles: { header: { fontSize: 20, bold: true, color: '#2c3e50' } },
         defaultStyle: { font: 'Roboto' }
     };
 
     pdfMake.createPdf(docDefinition).download(`Checklist_${cl.nome.replace(/\s+/g, '_')}.pdf`);
-    showToast('PDF do checklist gerado!', 'success');
+    showToast('PDF gerado!', 'success');
+}
+
+// === PDF PLANNER ===
+
+function gerarPDFPlanner() {
+    const pl = getAtivo();
+    if (!pl) { showToast('Selecione um planner.', 'warning'); return; }
+
+    const totalItens = Object.values(pl.dias).reduce((s, d) => s + d.length, 0);
+    if (totalItens === 0) { showToast('Adicione pelo menos um item.', 'warning'); return; }
+
+    const colWidths = ['*', '*', '*', '*', '*', '*', '*'];
+    const headerRow = DIAS_SEMANA.map(d => ({ text: d.nome.toUpperCase(), style: 'tableHeader', alignment: 'center', fontSize: 8 }));
+
+    // Build rows - find max items in any day
+    let maxItems = 0;
+    DIAS_SEMANA.forEach(d => { if (pl.dias[d.key].length > maxItems) maxItems = pl.dias[d.key].length; });
+
+    const bodyRows = [headerRow];
+    for (let i = 0; i < Math.max(maxItems, 1); i++) {
+        const row = DIAS_SEMANA.map(d => {
+            const item = pl.dias[d.key][i];
+            if (!item) return { text: '', fontSize: 9 };
+            const text = item.horario ? `${item.horario} - ${item.nome}` : item.nome;
+            return { text: text, fontSize: 9, padding: [3, 4, 3, 4] };
+        });
+        bodyRows.push(row);
+    }
+
+    const docDefinition = {
+        pageSize: 'A4', pageMargins: [30, 60, 30, 30],
+        header: { text: `PLANNER: ${pl.nome.toUpperCase()}`, style: 'header', alignment: 'center', margin: [0, 20, 0, 10] },
+        content: [
+            { text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')} | ${totalItens} tarefas`, alignment: 'center', fontSize: 9, color: '#888', margin: [0, 0, 0, 15] },
+            { table: { widths: colWidths, body: bodyRows }, layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#ddd', vLineColor: () => '#ddd', fillColor: (rowIndex) => rowIndex === 0 ? '#34495e' : null } },
+            { text: '\n' },
+            { text: 'Notas:', bold: true, fontSize: 11, margin: [0, 15, 0, 5] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 535, y2: 0, lineWidth: 1, lineColor: '#ccc' }], margin: [0, 0, 0, 12] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 535, y2: 0, lineWidth: 1, lineColor: '#ccc' }], margin: [0, 0, 0, 12] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 535, y2: 0, lineWidth: 1, lineColor: '#ccc' }] }
+        ],
+        styles: { header: { fontSize: 18, bold: true, color: '#2c3e50' }, tableHeader: { color: '#fff', bold: true } },
+        defaultStyle: { font: 'Roboto' }
+    };
+
+    pdfMake.createPdf(docDefinition).download(`Planner_${pl.nome.replace(/\s+/g, '_')}.pdf`);
+    showToast('PDF do planner gerado!', 'success');
 }
