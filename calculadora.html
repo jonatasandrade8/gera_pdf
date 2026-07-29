@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Financeira</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        @media (max-width: 768px) { .calc-grid { grid-template-columns: 1fr; } }
+        .calc-result { background: var(--bg-primary); padding: 15px; border-radius: var(--radius-md); margin-top: 10px; text-align: center; }
+        .calc-result .value { font-size: 2rem; font-weight: 700; color: var(--accent-green); }
+        .calc-result .label { font-size: 0.85rem; color: var(--text-muted); }
+        .calc-tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+        .calc-tab { flex: 1; padding: 10px; border: 1px solid var(--border-color); background: var(--bg-secondary); cursor: pointer; border-radius: var(--radius-sm); text-align: center; font-weight: 600; transition: var(--transition); }
+        .calc-tab:hover { background: var(--bg-primary); }
+        .calc-tab.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+        .calc-tab-content { display: none; }
+        .calc-tab-content.active { display: block; }
+        .amort-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .amort-table th { background: var(--bg-nav); color: white; padding: 6px; text-align: center; position: sticky; top: 0; }
+        .amort-table td { padding: 5px; text-align: center; border-bottom: 1px solid var(--border-light); }
+        .amort-table-container { max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link">💰 Nota</a>
+            <a href="checklist.html" class="nav-link">✅ Checklist</a>
+            <a href="prova.html" class="nav-link">📝 Prova</a>
+            <a href="calculadora.html" class="nav-link active">🔢 Calc.</a>
+            <a href="contrato.html" class="nav-link">📋 Contrato</a>
+            <a href="conversor.html" class="nav-link">🔄 Conv.</a>
+            <a href="analisador.html" class="nav-link">📊 Análise</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
+
+        <div class="header">
+            <h1>🔢 Calculadora Financeira</h1>
+            <p>Juros simples, compostos, financiamento e simulação de investimentos</p>
+        </div>
+
+        <div class="calc-tabs">
+            <div class="calc-tab active" onclick="switchCalcTab('juros-compostos', this)">Juros Compostos</div>
+            <div class="calc-tab" onclick="switchCalcTab('juros-simples', this)">Juros Simples</div>
+            <div class="calc-tab" onclick="switchCalcTab('financiamento', this)">Financiamento</div>
+            <div class="calc-tab" onclick="switchCalcTab('aporte', this)">Aporte Mensal</div>
+        </div>
+
+        <!-- Juros Compostos -->
+        <div class="calc-tab-content active" id="tab-juros-compostos">
+            <div class="form-section">
+                <h2>📈 Juros Compostos</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px;">Calcula o montante final com base no capital inicial, taxa e período.</p>
+                <div class="calc-grid">
+                    <div class="form-group">
+                        <label>Capital Inicial (R$)</label>
+                        <input type="number" id="jc-capital" value="1000" min="0" step="100" oninput="calcularJurosCompostos()">
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juros (%)</label>
+                        <input type="number" id="jc-taxa" value="1" min="0" step="0.1" oninput="calcularJurosCompostos()">
+                    </div>
+                    <div class="form-group">
+                        <label>Período (meses)</label>
+                        <input type="number" id="jc-periodo" value="12" min="1" step="1" oninput="calcularJurosCompostos()">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Taxa</label>
+                        <select id="jc-tipo" onchange="calcularJurosCompostos()">
+                            <option value="mensal">Mensal</option>
+                            <option value="anual">Anual</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="calc-result">
+                    <div class="label">Montante Final</div>
+                    <div class="value" id="jc-resultado">R$ 1.126,83</div>
+                    <div style="margin-top:8px;font-size:0.9rem;color:var(--text-muted);">
+                        Rendimento Total: <span id="jc-rendimento" style="color:var(--accent-green);font-weight:600;">R$ 126,83</span>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:15px;">
+                    <label>Evolução Mensal</label>
+                    <div class="amort-table-container" id="jc-tabela"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Juros Simples -->
+        <div class="calc-tab-content" id="tab-juros-simples">
+            <div class="form-section">
+                <h2>📊 Juros Simples</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px;">Calcula o montante com juros proporcionais ao capital e tempo.</p>
+                <div class="calc-grid">
+                    <div class="form-group">
+                        <label>Capital Inicial (R$)</label>
+                        <input type="number" id="js-capital" value="1000" min="0" step="100" oninput="calcularJurosSimples()">
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juros (%)</label>
+                        <input type="number" id="js-taxa" value="1" min="0" step="0.1" oninput="calcularJurosSimples()">
+                    </div>
+                    <div class="form-group">
+                        <label>Período (meses)</label>
+                        <input type="number" id="js-periodo" value="12" min="1" step="1" oninput="calcularJurosSimples()">
+                    </div>
+                </div>
+                <div class="calc-result">
+                    <div class="label">Montante Final</div>
+                    <div class="value" id="js-resultado">R$ 1.120,00</div>
+                    <div style="margin-top:8px;font-size:0.9rem;color:var(--text-muted);">
+                        Rendimento Total: <span id="js-rendimento" style="color:var(--accent-green);font-weight:600;">R$ 120,00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financiamento / SAC -->
+        <div class="calc-tab-content" id="tab-financiamento">
+            <div class="form-section">
+                <h2>🏠 Financiamento (SAC)</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px;">Simule parcelas fixas decrescentes com amortização constante.</p>
+                <div class="calc-grid">
+                    <div class="form-group">
+                        <label>Valor do Financiamento (R$)</label>
+                        <input type="number" id="fin-valor" value="100000" min="0" step="1000" oninput="calcularFinanciamento()">
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juros (% ao mês)</label>
+                        <input type="number" id="fin-taxa" value="0.8" min="0" step="0.1" oninput="calcularFinanciamento()">
+                    </div>
+                    <div class="form-group">
+                        <label>Prazo (meses)</label>
+                        <input type="number" id="fin-prazo" value="360" min="1" step="12" oninput="calcularFinanciamento()">
+                    </div>
+                </div>
+                <div class="calc-grid" style="margin-top:15px;">
+                    <div class="calc-result">
+                        <div class="label">Valor da Parcela (1ª)</div>
+                        <div class="value" style="font-size:1.5rem;color:var(--accent-orange);" id="fin-parcela">R$ 1.077,78</div>
+                    </div>
+                    <div class="calc-result">
+                        <div class="label">Total de Juros Pagos</div>
+                        <div class="value" style="font-size:1.5rem;color:var(--accent-red);" id="fin-juros">R$ 144.000,00</div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:15px;">
+                    <label>Tabela de Amortização (primeiras 12 parcelas)</label>
+                    <div class="amort-table-container" id="fin-tabela"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aporte Mensal -->
+        <div class="calc-tab-content" id="tab-aporte">
+            <div class="form-section">
+                <h2>💰 Simulador de Aporte Mensal</h2>
+                <p style="color:var(--text-muted);margin-bottom:15px;">Calcula o saldo acumulado com depósitos mensais e juros compostos.</p>
+                <div class="calc-grid">
+                    <div class="form-group">
+                        <label>Aporte Mensal (R$)</label>
+                        <input type="number" id="ap-valor" value="500" min="0" step="50" oninput="calcularAporte()">
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juros (% ao mês)</label>
+                        <input type="number" id="ap-taxa" value="0.5" min="0" step="0.1" oninput="calcularAporte()">
+                    </div>
+                    <div class="form-group">
+                        <label>Período (meses)</label>
+                        <input type="number" id="ap-periodo" value="60" min="1" step="12" oninput="calcularAporte()">
+                    </div>
+                </div>
+                <div class="calc-result">
+                    <div class="label">Saldo Acumulado</div>
+                    <div class="value" id="ap-resultado">R$ 35.004,52</div>
+                    <div style="margin-top:8px;font-size:0.9rem;color:var(--text-muted);">
+                        Total Depositado: R$ <span id="ap-depositado">30.000,00</span> |
+                        Rendimento: <span id="ap-rendimento" style="color:var(--accent-green);font-weight:600;">R$ 5.004,52</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.getElementById('themeBtn').textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? '1' : '0');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') { document.body.classList.add('dark-mode'); document.getElementById('themeBtn').textContent = '☀️'; }
+            calcularJurosCompostos(); calcularJurosSimples(); calcularFinanciamento(); calcularAporte();
+        });
+
+        function switchCalcTab(tabId, btn) {
+            document.querySelectorAll('.calc-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.calc-tab-content').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        function fmt(v) { return v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+        function moeda(v) { return 'R$ ' + fmt(v); }
+
+        function calcularJurosCompostos() {
+            const capital = parseFloat(document.getElementById('jc-capital').value) || 0;
+            let taxa = (parseFloat(document.getElementById('jc-taxa').value) || 0) / 100;
+            const periodo = parseInt(document.getElementById('jc-periodo').value) || 1;
+            const tipo = document.getElementById('jc-tipo').value;
+            if (tipo === 'anual') taxa = Math.pow(1 + taxa, 1/12) - 1;
+            const montante = capital * Math.pow(1 + taxa, periodo);
+            document.getElementById('jc-resultado').textContent = moeda(montante);
+            document.getElementById('jc-rendimento').textContent = moeda(montante - capital);
+
+            let html = '<table class="amort-table"><thead><tr><th>Mês</th><th>Saldo (R$)</th><th>Rendimento (R$)</th></tr></thead><tbody>';
+            for (let i = 1; i <= Math.min(periodo, 60); i++) {
+                const saldo = capital * Math.pow(1 + taxa, i);
+                html += `<tr><td>${i}</td><td>${fmt(saldo)}</td><td>${fmt(saldo - capital)}</td></tr>`;
+            }
+            if (periodo > 60) html += `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">... mostrando 60 de ${periodo} meses</td></tr>`;
+            html += '</tbody></table>';
+            document.getElementById('jc-tabela').innerHTML = html;
+        }
+
+        function calcularJurosSimples() {
+            const capital = parseFloat(document.getElementById('js-capital').value) || 0;
+            const taxa = (parseFloat(document.getElementById('js-taxa').value) || 0) / 100;
+            const periodo = parseInt(document.getElementById('js-periodo').value) || 1;
+            const juros = capital * taxa * periodo;
+            const montante = capital + juros;
+            document.getElementById('js-resultado').textContent = moeda(montante);
+            document.getElementById('js-rendimento').textContent = moeda(juros);
+        }
+
+        function calcularFinanciamento() {
+            const valor = parseFloat(document.getElementById('fin-valor').value) || 0;
+            const taxa = (parseFloat(document.getElementById('fin-taxa').value) || 0) / 100;
+            const prazo = parseInt(document.getElementById('fin-prazo').value) || 1;
+            const amort = valor / prazo;
+            let totalJuros = 0;
+            let primeiraParcela = 0;
+            let html = '<table class="amort-table"><thead><tr><th>Parcela</th><th>Amortização</th><th>Juros</th><th>Prestação</th><th>Saldo Devedor</th></tr></thead><tbody>';
+            let saldo = valor;
+            const maxRows = Math.min(prazo, 12);
+            for (let i = 1; i <= maxRows; i++) {
+                const juros = saldo * taxa;
+                const prestacao = amort + juros;
+                if (i === 1) primeiraParcela = prestacao;
+                totalJuros += juros;
+                saldo -= amort;
+                html += `<tr><td>${i}</td><td>${fmt(amort)}</td><td>${fmt(juros)}</td><td>${fmt(prestacao)}</td><td>${fmt(Math.max(saldo, 0))}</td></tr>`;
+            }
+            if (prazo > maxRows) {
+                html += `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">... mostrando ${maxRows} de ${prazo} parcelas</td></tr>`;
+                const jurosRestantes = (saldo * taxa) * (prazo - maxRows);
+                totalJuros += jurosRestantes;
+            }
+            html += '</tbody></table>';
+            document.getElementById('fin-parcela').textContent = moeda(primeiraParcela);
+            document.getElementById('fin-juros').textContent = moeda(totalJuros);
+            document.getElementById('fin-tabela').innerHTML = html;
+        }
+
+        function calcularAporte() {
+            const aporte = parseFloat(document.getElementById('ap-valor').value) || 0;
+            const taxa = (parseFloat(document.getElementById('ap-taxa').value) || 0) / 100;
+            const periodo = parseInt(document.getElementById('ap-periodo').value) || 1;
+            const totalDepositado = aporte * periodo;
+            const saldo = aporte * ((Math.pow(1 + taxa, periodo) - 1) / taxa);
+            document.getElementById('ap-resultado').textContent = moeda(saldo);
+            document.getElementById('ap-depositado').textContent = fmt(totalDepositado);
+            document.getElementById('ap-rendimento').textContent = moeda(saldo - totalDepositado);
+        }
+    </script>
+</body>
+</html>

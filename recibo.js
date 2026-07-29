@@ -9,11 +9,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const hoje = hojeISO();
     document.getElementById('periodo-inicio').value = hoje;
     document.getElementById('periodo-fim').value = hoje;
+    document.getElementById('periodo-data').value = hoje;
     renderizarRecibosSalvos();
     renderizarServicos();
+    togglePeriodoRecibo();
     atualizarPrevia();
     atalhosTeclado({ 's': salvarRecibo, 'p': gerarPDF });
 });
+
+function togglePeriodoRecibo() {
+    const tipo = document.getElementById('periodo-tipo').value;
+    document.getElementById('periodo-range').style.display = (tipo === 'data') ? 'none' : '';
+    document.getElementById('periodo-single').style.display = (tipo === 'data') ? 'block' : 'none';
+}
 
 function setRecebedorType(tipo) {
     recebedorType = tipo;
@@ -167,24 +175,66 @@ async function buscarCNPJField(tipo) {
 function atualizarPrevia() {
     const preview = document.getElementById('preview');
     const recebedorNome = document.getElementById('recebedor-nome').value;
+    const recebedorDoc = document.getElementById('recebedor-doc').value;
+    const recebedorRua = document.getElementById('recebedor-rua').value;
+    const recebedorNum = document.getElementById('recebedor-num').value;
+    const recebedorCidade = document.getElementById('recebedor-cidade').value;
+    const recebedorUf = document.getElementById('recebedor-uf').value;
     const pagadorNome = document.getElementById('pagador-nome').value;
     const total = document.getElementById('total-amount').innerText;
+
     if (!recebedorNome && !pagadorNome && total === 'R$ 0,00') {
         preview.innerHTML = '<p style="color: var(--text-light); text-align: center;">Aguardando preenchimento...</p>';
-    } else {
-        preview.innerHTML = `
-            <div style="width: 100%; text-align: left; padding: 15px; font-family: Arial, sans-serif;">
-                <h3 style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px;">PRÉVIA DO RECIBO</h3>
-                <p><strong>Recebedor:</strong> ${recebedorNome || '...'}</p>
-                <p><strong>Pagador:</strong> ${pagadorNome || '...'}</p>
-                <hr style="margin: 15px 0;">
-                <h2 style="text-align: right; color: #333;">Total: ${total}</h2>
-            </div>
-        `;
+        return;
     }
+
+    const periodoTipo = document.getElementById('periodo-tipo').value;
+    const periodoData = document.getElementById('periodo-data').value;
+    const periodoInicio = document.getElementById('periodo-inicio').value;
+    const periodoFim = document.getElementById('periodo-fim').value;
+    const observacoes = document.getElementById('observacoes').value;
+
+    let periodoHtml = '';
+    if (periodoTipo === 'data' && periodoData) {
+        periodoHtml = `<p style="font-size: 9pt; color: #555; margin-bottom: 8px;">Data: ${formatarDataCurta(periodoData)}</p>`;
+    } else if (periodoInicio) {
+        periodoHtml = `<p style="font-size: 9pt; color: #555; margin-bottom: 8px;">Período: ${formatarDataCurta(periodoInicio)} a ${formatarDataCurta(periodoFim)}</p>`;
+    }
+
+    let itensHtml = '';
+    servicos.forEach((s, i) => {
+        if (s.desc || s.valor) {
+            itensHtml += `<tr><td style="padding: 3px 6px; border-bottom: 1px solid #eee; font-size: 9pt;">${s.desc || 'Item'}</td><td style="padding: 3px 6px; text-align: center; font-size: 9pt;">${s.qtd || 1}x</td><td style="padding: 3px 6px; text-align: right; font-size: 9pt;">${formatarParaMoeda((s.qtd || 1) * (s.valor || 0))}</td></tr>`;
+        }
+    });
+
+    preview.innerHTML = `
+        <div style="width: 100%; text-align: left; padding: 15px; font-family: Roboto, Arial, sans-serif; font-size: 10pt;">
+            <div style="text-align: center; font-size: 14pt; font-weight: bold; color: #2c3e50; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 12px;">RECIBO DE PRESTAÇÃO DE SERVIÇOS</div>
+            <div style="display: flex; gap: 20px; margin-bottom: 12px;">
+                <div style="flex: 1;">
+                    <p style="font-weight: 700; font-size: 10pt; color: #34495e; margin-bottom: 4px;">RECEBEDOR (PRESTADOR)</p>
+                    <p style="font-size: 10pt; margin: 2px 0;">${recebedorNome || '...'}</p>
+                    <p style="font-size: 9pt; color: #555; margin: 1px 0;">${recebedorDoc || ''}</p>
+                    <p style="font-size: 9pt; color: #555; margin: 1px 0;">${recebedorRua ? `${recebedorRua}, ${recebedorNum}` : ''}</p>
+                    <p style="font-size: 9pt; color: #555; margin: 1px 0;">${recebedorCidade ? `${recebedorCidade}${recebedorUf ? ` - ${recebedorUf}` : ''}` : ''}</p>
+                </div>
+                <div style="flex: 1;">
+                    <p style="font-weight: 700; font-size: 10pt; color: #34495e; margin-bottom: 4px;">PAGADOR (CLIENTE)</p>
+                    <p style="font-size: 10pt; margin: 2px 0;">${pagadorNome || '...'}</p>
+                </div>
+            </div>
+            ${periodoHtml}
+            ${itensHtml ? `<table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;"><tr style="background: #34495e; color: #fff;"><th style="padding: 4px 6px; text-align: left; font-size: 9pt;">Descrição</th><th style="padding: 4px 6px; text-align: center; font-size: 9pt;">Qtd</th><th style="padding: 4px 6px; text-align: right; font-size: 9pt;">Subtotal</th></tr>${itensHtml}</table>` : ''}
+            ${observacoes ? `<p style="font-size: 9pt; color: #555; margin-bottom: 8px; font-style: italic;">Obs: ${observacoes}</p>` : ''}
+            <hr style="margin: 10px 0;">
+            <div style="text-align: right; font-size: 14pt; font-weight: bold; color: #27ae60;">Total: ${total}</div>
+        </div>
+    `;
 }
 
 function salvarRecibo() {
+    const periodoTipo = document.getElementById('periodo-tipo').value;
     const formData = {
         recebedor: {
             tipo: recebedorType,
@@ -212,10 +262,12 @@ function salvarRecibo() {
         },
         servicos: servicos,
         periodo: {
-            tipo: document.getElementById('periodo-tipo').value,
-            inicio: document.getElementById('periodo-inicio').value,
-            fim: document.getElementById('periodo-fim').value,
-        }
+            tipo: periodoTipo,
+            inicio: periodoTipo === 'data' ? '' : document.getElementById('periodo-inicio').value,
+            fim: periodoTipo === 'data' ? '' : document.getElementById('periodo-fim').value,
+            data: periodoTipo === 'data' ? document.getElementById('periodo-data').value : '',
+        },
+        observacoes: document.getElementById('observacoes').value,
     };
     const reciboSalvo = {
         nome: (formData.recebedor.nome || 'Recibo Sem Nome') + ' (' + new Date().toLocaleDateString('pt-BR') + ')',
@@ -274,27 +326,31 @@ function carregarRecibo(id) {
     document.getElementById('pagador-comp').value = formData.pagador.comp;
     document.getElementById('pagador-cidade').value = formData.pagador.cidade;
     document.getElementById('pagador-uf').value = formData.pagador.uf;
-    document.getElementById('periodo-tipo').value = formData.periodo.tipo;
-    document.getElementById('periodo-inicio').value = formData.periodo.inicio;
-    document.getElementById('periodo-fim').value = formData.periodo.fim;
+    document.getElementById('periodo-tipo').value = formData.periodo.tipo || 'data';
+    document.getElementById('periodo-inicio').value = formData.periodo.inicio || '';
+    document.getElementById('periodo-fim').value = formData.periodo.fim || '';
+    document.getElementById('periodo-data').value = formData.periodo.data || '';
+    document.getElementById('observacoes').value = formData.observacoes || '';
     servicos = formData.servicos || [];
+    togglePeriodoRecibo();
     renderizarServicos();
     calcularTotal();
     atualizarPrevia();
     showToast('Modelo carregado!', 'success');
 }
 
-function excluirRecibo(id) {
-    if (!confirm('Tem certeza que deseja excluir este modelo?')) return;
+async function excluirRecibo(id) {
+    if (!await showConfirmModal('Tem certeza que deseja excluir este modelo?')) return;
     storageRemove(STORAGE_KEY, id);
     showToast('Modelo excluído.', 'info');
     renderizarRecibosSalvos();
 }
 
-function limparFormulario() {
-    if (!confirm('Limpar todos os campos do formulário?')) return;
+async function limparFormulario() {
+    if (!await showConfirmModal('Limpar todos os campos do formulário?')) return;
     const inputs = document.querySelectorAll('.form-section input[type="text"], .form-section input[type="tel"], .form-section input[type="date"]');
     inputs.forEach(i => { i.value = ''; i.classList.remove('input-error', 'input-success'); });
+    document.getElementById('observacoes').value = '';
     servicos = [];
     renderizarServicos();
     calcularTotal();
@@ -302,35 +358,20 @@ function limparFormulario() {
     const hoje = hojeISO();
     document.getElementById('periodo-inicio').value = hoje;
     document.getElementById('periodo-fim').value = hoje;
+    document.getElementById('periodo-data').value = hoje;
     showToast('Formulário limpo.', 'info');
 }
 
-function validarCampos() {
-    const camposObrigatorios = [
-        'recebedor-nome', 'recebedor-doc', 'recebedor-tel', 'recebedor-cep',
-        'recebedor-rua', 'recebedor-num', 'recebedor-cidade', 'recebedor-uf',
-        'periodo-inicio', 'periodo-fim'
-    ];
-    let validos = true;
-    camposObrigatorios.forEach(id => {
-        const input = document.getElementById(id);
-        if (input && !input.value.trim()) {
-            input.classList.add('input-error');
-            validos = false;
-        } else if (input) {
-            input.classList.remove('input-error');
-        }
-    });
-    if (servicos.length === 0) {
-        showToast('Adicione pelo menos um produto/serviço.', 'warning');
-        validos = false;
-    }
-    if (!validos) showToast('Preencha todos os campos obrigatórios.', 'error');
-    return validos;
-}
-
 function gerarPDF() {
-    if (!validarCampos()) return;
+    const nomeRecebedor = document.getElementById('recebedor-nome').value.trim();
+    if (!nomeRecebedor) {
+        showToast('Informe ao menos o nome do Recebedor.', 'warning');
+        return;
+    }
+    if (servicos.length === 0) {
+        showToast('Adicione pelo menos um serviço.', 'warning');
+        return;
+    }
 
     const recebedor = {
         nome: document.getElementById('recebedor-nome').value,
@@ -354,9 +395,11 @@ function gerarPDF() {
         uf: document.getElementById('pagador-uf').value,
         cep: document.getElementById('pagador-cep').value,
     };
-    const periodoInicio = formatarDataExtenso(document.getElementById('periodo-inicio').value);
-    const periodoFim = formatarDataExtenso(document.getElementById('periodo-fim').value);
     const periodoTipo = document.getElementById('periodo-tipo').value;
+    const periodoInicio = periodoTipo === 'data' ? '' : formatarDataExtenso(document.getElementById('periodo-inicio').value);
+    const periodoFim = periodoTipo === 'data' ? '' : formatarDataExtenso(document.getElementById('periodo-fim').value);
+    const periodoData = periodoTipo === 'data' ? formatarDataExtenso(document.getElementById('periodo-data').value) : '';
+    const observacoes = document.getElementById('observacoes').value;
     const total = document.getElementById('total-amount').innerText;
 
     const corpoTabela = [
@@ -394,10 +437,10 @@ function gerarPDF() {
                     ], style: 'infoBox' }
                 ], columnGap: 20
             },
-            { text: [
-                { text: 'Período da Prestação (Referente a ' + periodoTipo + '):\n', style: 'subheader', margin: [0, 20, 0, 5] },
-                { text: `De ${periodoInicio} até ${periodoFim}`, alignment: 'center' }
-            ], margin: [0, 10, 0, 10] },
+            periodoTipo === 'data'
+                ? { text: [{ text: 'Data da Prestação:\n', style: 'subheader', margin: [0, 20, 0, 5] }, { text: periodoData, alignment: 'center' }], margin: [0, 10, 0, 10] }
+                : { text: [{ text: 'Período da Prestação (Referente a ' + periodoTipo + '):\n', style: 'subheader', margin: [0, 20, 0, 5] }, { text: `De ${periodoInicio} até ${periodoFim}`, alignment: 'center' }], margin: [0, 10, 0, 10] },
+            ...(observacoes ? [{ text: [{ text: 'Observações:\n', bold: true }, observacoes], fontSize: 10, margin: [0, 5, 0, 10] }] : []),
             { text: 'ITENS/SERVIÇOS PRESTADOS', style: 'subheader', margin: [0, 15, 0, 5] },
             { table: { headerRows: 1, widths: ['*', 'auto', 'auto', 'auto'], body: corpoTabela }, layout: 'lightHorizontalLines' },
             { text: `TOTAL: ${total}`, style: 'total', alignment: 'right', margin: [0, 10, 0, 30] },
@@ -424,6 +467,7 @@ function gerarPDF() {
         defaultStyle: { font: 'Roboto' }
     };
 
-    pdfMake.createPdf(docDefinition).download(`Recibo_${recebedor.nome.split(' ')[0]}_${periodoFim.replace(/\//g, '-')}.pdf`);
+    const dataArquivo = periodoTipo === 'data' ? periodoData.replace(/\//g, '-') : periodoFim.replace(/\//g, '-');
+    pdfMake.createPdf(docDefinition).download(`Recibo_${recebedor.nome.split(' ')[0]}_${dataArquivo}.pdf`);
     showToast('PDF gerado com sucesso!', 'success');
 }

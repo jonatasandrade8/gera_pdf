@@ -6,19 +6,37 @@ let recebiveis = [];
 let descontos = [];
 const LOCAL_STORAGE_KEY = 'notasReceber';
 
+function gerarNumeroNota() {
+    const agora = new Date();
+    const ano = agora.getFullYear();
+    const mes = String(agora.getMonth() + 1).padStart(2, '0');
+    const dia = String(agora.getDate()).padStart(2, '0');
+    const seq = String(Math.floor(Math.random() * 9000) + 1000);
+    return `NN-${ano}${mes}${dia}-${seq}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const hoje = hojeISO();
     document.getElementById('periodo-inicio').value = hoje;
     document.getElementById('periodo-fim').value = hoje;
+    document.getElementById('periodo-data').value = hoje;
+    document.getElementById('nota-numero').value = gerarNumeroNota();
     setRecebedorType('pf');
     setPagadorType('pf');
     renderizarItens('recebiveis');
     renderizarItens('descontos');
     calcularTotal();
     renderizarNotasSalvas();
+    togglePeriodoNota();
     atualizarPrevia();
     atalhosTeclado({ 's': salvarNota, 'p': gerarPDF });
 });
+
+function togglePeriodoNota() {
+    const tipo = document.getElementById('periodo-tipo').value;
+    document.getElementById('periodo-range').style.display = (tipo === 'data') ? 'none' : '';
+    document.getElementById('periodo-single').style.display = (tipo === 'data') ? 'block' : 'none';
+}
 
 function setRecebedorType(tipo) {
     recebedorType = tipo;
@@ -179,7 +197,9 @@ async function buscarCNPJField(tipo) {
 }
 
 function coletarDadosFormulario() {
+    const periodoTipo = document.getElementById('periodo-tipo').value;
     return {
+        numeroNota: document.getElementById('nota-numero').value,
         recebedor: {
             nome: document.getElementById('recebedor-nome').value,
             doc: document.getElementById('recebedor-doc').value,
@@ -203,9 +223,10 @@ function coletarDadosFormulario() {
         },
         recebiveis: recebiveis,
         descontos: descontos,
-        dataInicio: document.getElementById('periodo-inicio').value,
-        dataFim: document.getElementById('periodo-fim').value,
-        periodoTipo: document.getElementById('periodo-tipo').value,
+        dataInicio: periodoTipo === 'data' ? '' : document.getElementById('periodo-inicio').value,
+        dataFim: periodoTipo === 'data' ? '' : document.getElementById('periodo-fim').value,
+        periodoData: periodoTipo === 'data' ? document.getElementById('periodo-data').value : '',
+        periodoTipo: periodoTipo,
         observacoes: document.getElementById('observacoes').value,
     };
 }
@@ -251,12 +272,15 @@ function carregarNota(id) {
     document.getElementById('pagador-num').value = dados.pagador.num;
     document.getElementById('pagador-cidade').value = dados.pagador.cidade;
     document.getElementById('pagador-uf').value = dados.pagador.uf;
-    document.getElementById('periodo-inicio').value = dados.dataInicio;
-    document.getElementById('periodo-fim').value = dados.dataFim;
-    document.getElementById('periodo-tipo').value = dados.periodoTipo;
-    document.getElementById('observacoes').value = dados.observacoes;
+    document.getElementById('periodo-tipo').value = dados.periodoTipo || 'data';
+    document.getElementById('periodo-inicio').value = dados.dataInicio || '';
+    document.getElementById('periodo-fim').value = dados.dataFim || '';
+    document.getElementById('periodo-data').value = dados.periodoData || '';
+    document.getElementById('observacoes').value = dados.observacoes || '';
+    document.getElementById('nota-numero').value = dados.numeroNota || gerarNumeroNota();
     recebiveis = dados.recebiveis || [];
     descontos = dados.descontos || [];
+    togglePeriodoNota();
     renderizarItens('recebiveis');
     renderizarItens('descontos');
     calcularTotal();
@@ -264,8 +288,8 @@ function carregarNota(id) {
     showToast('Nota carregada!', 'success');
 }
 
-function deletarNota(id) {
-    if (!confirm('Tem certeza que deseja deletar esta nota?')) return;
+async function deletarNota(id) {
+    if (!await showConfirmModal('Tem certeza que deseja deletar esta nota?')) return;
     storageRemove(LOCAL_STORAGE_KEY, id);
     showToast('Nota excluída.', 'info');
     renderizarNotasSalvas();
@@ -297,24 +321,55 @@ function atualizarPrevia() {
     const { totalFinal } = calcularTotal();
     const recebedorNome = document.getElementById('recebedor-nome').value || 'Nome do Recebedor';
     const pagadorNome = document.getElementById('pagador-nome').value || 'Nome do Pagador';
-    let previaHTML = `
-        <h3 style="color:var(--accent-blue); border-bottom: 2px solid var(--border-light); padding-bottom: 5px;">NOTA DE VALORES A RECEBER</h3>
-        <p><strong>De:</strong> ${recebedorNome} (${recebedorType.toUpperCase()})</p>
-        <p><strong>Para:</strong> ${pagadorNome} (${pagadorType.toUpperCase()})</p>
-        <hr style="margin: 10px 0;">
-        <p>Recebíveis: ${formatarParaMoeda(recebiveis.reduce((sum, item) => sum + item.valor, 0))}</p>
-        <p style="color: var(--accent-red);">Descontos: ${formatarParaMoeda(descontos.reduce((sum, item) => sum + item.valor, 0))}</p>
-        <h4 style="margin-top: 10px; color: var(--accent-green);">Total: ${formatarParaMoeda(totalFinal)}</h4>
-    `;
-    const logoBase64 = document.getElementById('recebedor-logo-base64').value;
-    if (recebedorType === 'pj' && logoBase64) {
-        previaHTML = `<img src="${logoBase64}" alt="Logo" style="max-width: 100px; max-height: 100px; margin-bottom: 10px; display: block;">` + previaHTML;
+    const numeroNota = document.getElementById('nota-numero').value;
+    const periodoTipo = document.getElementById('periodo-tipo').value;
+    const recebedorDoc = document.getElementById('recebedor-doc').value;
+    const recebedorRua = document.getElementById('recebedor-rua').value;
+    const recebedorNum = document.getElementById('recebedor-num').value;
+    const recebedorCidade = document.getElementById('recebedor-cidade').value;
+    const recebedorUf = document.getElementById('recebedor-uf').value;
+
+    let periodoHtml = '';
+    if (periodoTipo === 'data') {
+        const d = document.getElementById('periodo-data').value;
+        if (d) periodoHtml = `<p style="font-size: 9pt; color: #555; margin: 1px 0;">Data: ${formatarDataCurta(d)}</p>`;
+    } else {
+        const inicio = document.getElementById('periodo-inicio').value;
+        const fim = document.getElementById('periodo-fim').value;
+        if (inicio) periodoHtml = `<p style="font-size: 9pt; color: #555; margin: 1px 0;">Período: ${formatarDataCurta(inicio)}${fim ? ` a ${formatarDataCurta(fim)}` : ''} (${periodoTipo})</p>`;
     }
+
+    let previaHTML = `
+        <div style="font-family: Roboto, Arial, sans-serif; font-size: 10pt;">
+            <div style="display:flex;align-items:flex-start;gap:15px;margin-bottom:10px;">
+                ${recebedorType === 'pj' && document.getElementById('recebedor-logo-base64').value ? `<img src="${document.getElementById('recebedor-logo-base64').value}" alt="Logo" style="max-width:80px;max-height:80px;">` : ''}
+                <div style="flex:1;text-align:right;">
+                    <div style="font-size:9pt;color:#888;">Nº ${numeroNota}</div>
+                </div>
+            </div>
+            <div style="font-size:13pt;font-weight:bold;color:#34495e;text-align:center;margin:8px 0;">NOTA DE VALORES A RECEBER</div>
+            <div style="display:flex;gap:20px;margin:8px 0;">
+                <div style="flex:1;">
+                    <p style="font-weight:700;font-size:10pt;color:#34495e;margin:2px 0;">${recebedorNome} (${recebedorType.toUpperCase()})</p>
+                    ${recebedorDoc ? `<p style="font-size:9pt;color:#555;margin:1px 0;">${recebedorDoc}</p>` : ''}
+                    ${recebedorRua ? `<p style="font-size:9pt;color:#555;margin:1px 0;">${recebedorRua}, ${recebedorNum} - ${recebedorCidade}/${recebedorUf}</p>` : ''}
+                </div>
+            </div>
+            <div style="background:#ecf0f1;padding:4px 8px;margin:8px 0;border-radius:3px;">
+                <p style="font-weight:bold;font-size:9pt;margin:2px 0;">PAGADOR (CLIENTE): ${pagadorNome} (${pagadorType.toUpperCase()})</p>
+            </div>
+            ${periodoHtml}
+            <hr style="margin:8px 0;border:none;border-top:1px solid #ccc;">
+            <p style="font-size:10pt;margin:4px 0;">Recebíveis: ${formatarParaMoeda(recebiveis.reduce((sum, item) => sum + item.valor, 0))}</p>
+            <p style="font-size:10pt;margin:4px 0;color:#e74c3c;">Descontos: ${formatarParaMoeda(descontos.reduce((sum, item) => sum + item.valor, 0))}</p>
+            <div style="font-size:14pt;font-weight:bold;margin-top:8px;color:#27ae60;">Total Líquido: ${formatarParaMoeda(totalFinal)}</div>
+        </div>
+    `;
     document.getElementById('preview').innerHTML = previaHTML;
 }
 
-function limparFormulario() {
-    if (!confirm('Limpar todos os campos?')) return;
+async function limparFormulario() {
+    if (!await showConfirmModal('Limpar todos os campos?')) return;
     const inputs = document.querySelectorAll('.form-section input[type="text"], .form-section input[type="tel"], .form-section input[type="date"], .form-section textarea');
     inputs.forEach(i => { i.value = ''; });
     recebiveis = []; descontos = [];
@@ -323,13 +378,15 @@ function limparFormulario() {
     const hoje = hojeISO();
     document.getElementById('periodo-inicio').value = hoje;
     document.getElementById('periodo-fim').value = hoje;
+    document.getElementById('periodo-data').value = hoje;
+    document.getElementById('nota-numero').value = gerarNumeroNota();
     showToast('Formulário limpo.', 'info');
 }
 
 async function gerarPDF() {
     const dados = coletarDadosFormulario();
-    if (!dados.recebedor.nome || !dados.pagador.nome || dados.recebiveis.length === 0) {
-        showToast('Preencha Recebedor, Pagador e adicione pelo menos 1 recebível.', 'error');
+    if (dados.recebiveis.length === 0) {
+        showToast('Adicione pelo menos 1 recebível.', 'warning');
         return;
     }
     const { totalRecebiveis, totalDescontos, totalFinal } = calcularTotal();
@@ -360,11 +417,21 @@ async function gerarPDF() {
     const corpoRecebiveis = getTabelaItens(dados.recebiveis, 'Recebíveis', '#27ae60');
     const corpoDescontos = getTabelaItens(dados.descontos, 'Descontos', '#e74c3c');
 
+    let periodoTexto = '';
+    if (dados.periodoTipo === 'data') {
+        periodoTexto = `Data: ${formatarDataCurta(dados.periodoData)}`;
+    } else {
+        periodoTexto = `Início: ${formatarDataCurta(dados.dataInicio)}\nTérmino: ${formatarDataCurta(dados.dataFim)} (${dados.periodoTipo})`;
+    }
+
     const docDefinition = {
         pageSize: 'A4', pageMargins: [40, 40, 40, 40],
         content: [
             { columns: [
-                dados.recebedor.tipo === 'pj' && dados.recebedor.logoBase64 ? { image: dados.recebedor.logoBase64, width: 80, height: 80, alignment: 'left' } : { text: 'NOTA DE VALORES A RECEBER', style: 'header', alignment: 'left' },
+                { stack: [
+                    dados.recebedor.tipo === 'pj' && dados.recebedor.logoBase64 ? { image: dados.recebedor.logoBase64, width: 80, height: 80, alignment: 'left' } : null,
+                    { text: `Nº ${dados.numeroNota}`, fontSize: 9, color: '#888', alignment: 'left', margin: [0, 5, 0, 0] }
+                ].filter(Boolean) },
                 { text: [
                     { text: dados.recebedor.nome + '\n', bold: true, fontSize: 12 },
                     { text: dados.recebedor.rua + ', ' + dados.recebedor.num + '\n', fontSize: 10 },
@@ -380,7 +447,7 @@ async function gerarPDF() {
             ] }, layout: 'lightHorizontalLines', margin: [0, 5, 0, 15] },
             ...corpoRecebiveis, ...corpoDescontos,
             { columns: [
-                { text: `Início: ${formatarDataCurta(dados.dataInicio)}\nTérmino: ${formatarDataCurta(dados.dataFim)} (${dados.periodoTipo})`, style: 'infoBox', width: '*' },
+                { text: periodoTexto, style: 'infoBox', width: '*' },
                 { table: { widths: ['*', 100], body: [
                     [{ text: 'TOTAL RECEBÍVEIS', style: 'totalLabel' }, { text: formatarParaMoeda(totalRecebiveis), style: 'totalAmount', color: '#27ae60' }],
                     [{ text: 'TOTAL DESCONTOS', style: 'totalLabel' }, { text: formatarParaMoeda(totalDescontos), style: 'totalAmount', color: '#e74c3c' }],

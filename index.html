@@ -34,7 +34,8 @@
         <p class="menu-subtitle">Selecione a aplicação que deseja utilizar:</p>
 
         <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="🔍 Buscar ferramenta..." oninput="filterTools()">
+            <span style="font-size:1.2rem;line-height:1;">🔍</span>
+            <input type="text" id="searchInput" placeholder="Buscar ferramenta..." oninput="filterTools()">
         </div>
 
         <div class="menu-grid" id="menuGrid">
@@ -60,30 +61,26 @@
                 <span class="item-desc">Crie provas personalizáveis com múltiplos tipos de questões e gabarito</span>
                 <span class="badge badge-new">NOVO</span>
             </a>
-            <div class="menu-item disabled" data-name="calculadora">
+            <a href="calculadora.html" class="menu-item" data-name="calculadora financeira juros financiamento" style="background: linear-gradient(135deg, #e67e22, #f39c12);">
                 <span class="item-icon">🔢</span>
                 <span>Calculadora Financeira</span>
-                <span class="item-desc">Em desenvolvimento</span>
-                <span class="badge badge-soon">EM BREVE</span>
-            </div>
-            <div class="menu-item disabled" data-name="contrato gerador">
+                <span class="item-desc">Juros simples, compostos, financiamento SAC e simulação de aportes</span>
+            </a>
+            <a href="contrato.html" class="menu-item" data-name="contrato gerador prestacao locacao nda" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
                 <span class="item-icon">📋</span>
                 <span>Gerador de Contrato</span>
-                <span class="item-desc">Em desenvolvimento</span>
-                <span class="badge badge-soon">EM BREVE</span>
-            </div>
-            <div class="menu-item disabled" data-name="conversor unidades">
+                <span class="item-desc">Crie contratos de prestação, locação e NDA com templates prontos</span>
+            </a>
+            <a href="conversor.html" class="menu-item" data-name="conversor unidades medidas comprimento massa temperatura" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">
                 <span class="item-icon">🔄</span>
                 <span>Conversor de Unidades</span>
-                <span class="item-desc">Em desenvolvimento</span>
-                <span class="badge badge-soon">EM BREVE</span>
-            </div>
-            <div class="menu-item disabled" data-name="analisador texto">
+                <span class="item-desc">Converta comprimento, massa, temperatura, volume, área e mais</span>
+            </a>
+            <a href="analisador.html" class="menu-item" data-name="analisador texto palavras caracteres frequencia" style="background: linear-gradient(135deg, #34495e, #2c3e50);">
                 <span class="item-icon">📊</span>
                 <span>Analisador de Texto</span>
-                <span class="item-desc">Em desenvolvimento</span>
-                <span class="badge badge-soon">EM BREVE</span>
-            </div>
+                <span class="item-desc">Conte palavras, caracteres, tempo de leitura e frequência de termos</span>
+            </a>
         </div>
     </div>
 

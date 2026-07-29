@@ -1017,11 +1017,17 @@ input.loading {
 @media (min-width: 768px) {
     .row { grid-template-columns: 1fr 1fr; }
     .row.full { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 900px) {
+    .content { grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 1000px) {
     .weekly-grid { grid-template-columns: repeat(7, 1fr); }
 }
 
 @media (min-width: 1200px) {
-    .content { grid-template-columns: 1fr 1fr; }
     .document-preview { position: sticky; top: 20px; order: 0; margin-bottom: 0; }
     .content-3col { grid-template-columns: 250px 1fr 1fr; }
     .content-2col-equal { grid-template-columns: 1fr 1fr; }

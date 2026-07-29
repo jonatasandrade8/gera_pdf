@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Unidades</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .conv-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: end; }
+        @media (max-width: 768px) { .conv-grid { grid-template-columns: 1fr; } }
+        .conv-result { background: var(--bg-primary); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 15px; }
+        .conv-result .value { font-size: 2.5rem; font-weight: 700; color: var(--accent-green); }
+        .conv-result .label { font-size: 0.9rem; color: var(--text-muted); }
+        .conv-categories { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 20px; }
+        .conv-cat { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); cursor: pointer; transition: var(--transition); font-weight: 500; font-size: 0.9rem; }
+        .conv-cat:hover { border-color: var(--accent-blue); }
+        .conv-cat.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+        .swap-btn { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: var(--transition); margin: 0 auto; }
+        .swap-btn:hover { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link">💰 Nota</a>
+            <a href="checklist.html" class="nav-link">✅ Checklist</a>
+            <a href="prova.html" class="nav-link">📝 Prova</a>
+            <a href="calculadora.html" class="nav-link">🔢 Calc.</a>
+            <a href="contrato.html" class="nav-link">📋 Contrato</a>
+            <a href="conversor.html" class="nav-link active">🔄 Conv.</a>
+            <a href="analisador.html" class="nav-link">📊 Análise</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
+
+        <div class="header">
+            <h1>🔄 Conversor de Unidades</h1>
+            <p>Converta entre diferentes unidades de medida de forma rápida</p>
+        </div>
+
+        <div class="form-section">
+            <div class="conv-categories" id="convCategorias"></div>
+
+            <div class="conv-grid">
+                <div class="form-group">
+                    <label id="convLabelFrom">Valor de origem</label>
+                    <input type="number" id="convValor" value="1" min="0" step="any" oninput="converter()">
+                </div>
+                <div class="form-group">
+                    <label id="convLabelFromUnit">Unidade de origem</label>
+                    <select id="convFrom" onchange="converter()"></select>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+                    <button class="swap-btn" onclick="inverterUnidades()" title="Inverter unidades">⇄</button>
+                </div>
+            </div>
+            <div class="conv-grid">
+                <div></div>
+                <div class="form-group">
+                    <label id="convLabelToUnit">Unidade de destino</label>
+                    <select id="convTo" onchange="converter()"></select>
+                </div>
+                <div></div>
+            </div>
+
+            <div class="conv-result">
+                <div class="label" id="convResultLabel">Resultado</div>
+                <div class="value" id="convResultado">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        const unidades = {
+            comprimento: {
+                label: '📏 Comprimento',
+                units: { 'Metro (m)': 1, 'Quilômetro (km)': 1000, 'Centímetro (cm)': 0.01, 'Milímetro (mm)': 0.001, 'Polegada (in)': 0.0254, 'Pé (ft)': 0.3048, 'Jarda (yd)': 0.9144, 'Milha (mi)': 1609.344 }
+            },
+            massa: {
+                label: '⚖️ Massa',
+                units: { 'Quilograma (kg)': 1, 'Grama (g)': 0.001, 'Miligrama (mg)': 0.000001, 'Tonelada (t)': 1000, 'Libra (lb)': 0.453592, 'Onça (oz)': 0.0283495 }
+            },
+            temperatura: {
+                label: '🌡️ Temperatura',
+                units: { 'Celsius (°C)': 'celsius', 'Fahrenheit (°F)': 'fahrenheit', 'Kelvin (K)': 'kelvin' }
+            },
+            volume: {
+                label: '🧪 Volume',
+                units: { 'Litro (L)': 1, 'Mililitro (mL)': 0.001, 'Metro cúbico (m³)': 1000, 'Galão (US)': 3.78541, 'Onça fluida (fl oz)': 0.0295735, 'Xícara (cup)': 0.236588 }
+            },
+            area: {
+                label: '📐 Área',
+                units: { 'Metro quadrado (m²)': 1, 'Quilômetro quadrado (km²)': 1000000, 'Centímetro quadrado (cm²)': 0.0001, 'Hectare (ha)': 10000, 'Acre': 4046.86, 'Pé quadrado (ft²)': 0.092903 }
+            },
+            velocidade: {
+                label: '🚗 Velocidade',
+                units: { 'km/h': 0.277778, 'm/s': 1, 'mph': 0.44704, 'Nó (kn)': 0.514444 }
+            },
+            tempo: {
+                label: '⏱️ Tempo',
+                units: { 'Segundo (s)': 1, 'Minuto (min)': 60, 'Hora (h)': 3600, 'Dia': 86400, 'Semana': 604800, 'Mês (30 dias)': 2592000, 'Ano (365 dias)': 31536000 }
+            },
+            dados: {
+                label: '💾 Armazenamento',
+                units: { 'Byte (B)': 1, 'Kilobyte (KB)': 1024, 'Megabyte (MB)': 1048576, 'Gigabyte (GB)': 1073741824, 'Terabyte (TB)': 1099511627776 }
+            }
+        };
+
+        let catAtual = 'comprimento';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') { document.body.classList.add('dark-mode'); document.getElementById('themeBtn').textContent = '☀️'; }
+            renderizarCategorias();
+            renderizarUnidades();
+            converter();
+        });
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.getElementById('themeBtn').textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? '1' : '0');
+        }
+
+        function renderizarCategorias() {
+            const container = document.getElementById('convCategorias');
+            container.innerHTML = '';
+            Object.keys(unidades).forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'conv-cat' + (key === catAtual ? ' active' : '');
+                btn.textContent = unidades[key].label;
+                btn.onclick = () => { catAtual = key; renderizarCategorias(); renderizarUnidades(); converter(); };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderizarUnidades() {
+            const cat = unidades[catAtual];
+            const fromSel = document.getElementById('convFrom');
+            const toSel = document.getElementById('convTo');
+            fromSel.innerHTML = '';
+            toSel.innerHTML = '';
+            Object.keys(cat.units).forEach(u => {
+                fromSel.innerHTML += `<option value="${u}">${u}</option>`;
+                toSel.innerHTML += `<option value="${u}">${u}</option>`;
+            });
+            const keys = Object.keys(cat.units);
+            if (keys.length > 1) toSel.value = keys[1];
+        }
+
+        function converter() {
+            const cat = unidades[catAtual];
+            const fromKey = document.getElementById('convFrom').value;
+            const toKey = document.getElementById('convTo').value;
+            const valor = parseFloat(document.getElementById('convValor').value) || 0;
+            const fromVal = cat.units[fromKey];
+            const toVal = cat.units[toKey];
+            const resultLabel = document.getElementById('convResultLabel');
+            const resultEl = document.getElementById('convResultado');
+
+            if (catAtual === 'temperatura') {
+                resultEl.textContent = converterTemperatura(valor, fromKey, toKey);
+                resultLabel.textContent = `${valor} ${fromKey} =`;
+                return;
+            }
+
+            const base = valor * fromVal;
+            const result = base / toVal;
+            resultLabel.textContent = `${valor} ${fromKey} =`;
+            resultEl.textContent = result.toLocaleString('pt-BR', { maximumFractionDigits: 10 }) + ' ' + toKey;
+        }
+
+        function converterTemperatura(valor, from, to) {
+            let celsius;
+            if (from.includes('Celsius')) celsius = valor;
+            else if (from.includes('Fahrenheit')) celsius = (valor - 32) * 5/9;
+            else celsius = valor - 273.15;
+
+            let result;
+            if (to.includes('Celsius')) result = celsius;
+            else if (to.includes('Fahrenheit')) result = celsius * 9/5 + 32;
+            else result = celsius + 273.15;
+
+            return result.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' ' + to;
+        }
+
+        function inverterUnidades() {
+            const from = document.getElementById('convFrom');
+            const to = document.getElementById('convTo');
+            const temp = from.value;
+            from.value = to.value;
+            to.value = temp;
+            converter();
+        }
+    </script>
+</body>
+</html>

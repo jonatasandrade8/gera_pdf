@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Texto</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .analise-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }
+        .analise-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px; text-align: center; transition: var(--transition); }
+        .analise-card:hover { box-shadow: var(--shadow-sm); }
+        .analise-card .numero { font-size: 2rem; font-weight: 700; color: var(--accent-blue); }
+        .analise-card .rotulo { font-size: 0.85rem; color: var(--text-muted); margin-top: 5px; }
+        .analise-card.highlight .numero { color: var(--accent-green); }
+        .analise-card.warning .numero { color: var(--accent-orange); }
+        .analise-card.danger .numero { color: var(--accent-red); }
+        .analise-textarea { min-height: 300px; resize: vertical; font-family: monospace; line-height: 1.5; }
+        .freq-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .freq-table th { background: var(--bg-nav); color: white; padding: 6px 10px; text-align: left; font-size: 0.85rem; position: sticky; top: 0; }
+        .freq-table td { padding: 4px 10px; border-bottom: 1px solid var(--border-light); font-size: 0.9rem; }
+        .freq-table tr:hover { background: rgba(52,152,219,0.05); }
+        .freq-container { max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+        .char-bar { display: flex; gap: 2px; align-items: flex-end; height: 60px; margin: 10px 0; }
+        .char-bar-item { flex: 1; background: var(--accent-blue); border-radius: 2px 2px 0 0; min-height: 2px; transition: var(--transition); position: relative; }
+        .char-bar-item:hover { background: var(--accent-green); }
+        .char-bar-item .bar-label { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text-muted); white-space: nowrap; }
+        .analise-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .analise-actions button { flex: 1; min-width: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link">💰 Nota</a>
+            <a href="checklist.html" class="nav-link">✅ Checklist</a>
+            <a href="prova.html" class="nav-link">📝 Prova</a>
+            <a href="calculadora.html" class="nav-link">🔢 Calc.</a>
+            <a href="contrato.html" class="nav-link">📋 Contrato</a>
+            <a href="conversor.html" class="nav-link">🔄 Conv.</a>
+            <a href="analisador.html" class="nav-link active">📊 Análise</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
+
+        <div class="header">
+            <h1>📊 Analisador de Texto</h1>
+            <p>Analise estatísticas do seu texto: contagem, frequência, legibilidade e mais</p>
+        </div>
+
+        <div class="content">
+            <div class="form-section">
+                <h2>📝 Texto de Entrada</h2>
+                <div class="analise-actions">
+                    <button class="btn btn-outline btn-sm" onclick="carregarExemplo()">📄 Carregar Exemplo</button>
+                    <button class="btn btn-outline btn-sm" onclick="limparTexto()">🗑️ Limpar</button>
+                    <button class="btn btn-outline btn-sm" onclick="copiarTexto()">📋 Copiar</button>
+                </div>
+                <textarea id="textoInput" class="analise-textarea" placeholder="Cole ou digite seu texto aqui..." oninput="analisarTexto()"></textarea>
+            </div>
+
+            <div>
+                <div class="form-section">
+                    <h2>📊 Estatísticas</h2>
+                    <div class="analise-grid" id="statsGrid"></div>
+                </div>
+
+                <div class="form-section" id="freqSection" style="display:none;">
+                    <h2>🔤 Frequência de Palavras</h2>
+                    <p style="color:var(--text-muted);margin-bottom:10px;">Palavras mais frequentes no texto (mín. 3 letras, ignorando stopwords).</p>
+                    <div class="freq-container" id="freqContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') { document.body.classList.add('dark-mode'); document.getElementById('themeBtn').textContent = '☀️'; }
+        });
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.getElementById('themeBtn').textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? '1' : '0');
+        }
+
+        function analisarTexto() {
+            const texto = document.getElementById('textoInput').value;
+            const statsGrid = document.getElementById('statsGrid');
+            const freqSection = document.getElementById('freqSection');
+
+            if (!texto.trim()) {
+                statsGrid.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:30px;grid-column:1/-1;">Digite ou cole um texto para ver as estatísticas.</p>';
+                freqSection.style.display = 'none';
+                return;
+            }
+
+            const chars = texto.length;
+            const charsNoSpace = texto.replace(/\s/g, '').length;
+            const palavras = texto.match(/[\wà-üÀ-Ü]+/g) || [];
+            const totalPalavras = palavras.length;
+            const linhas = texto.split('\n').length;
+            const paragrafos = texto.split(/\n\s*\n/).filter(p => p.trim()).length || 1;
+            const frases = texto.split(/[.!?]+/).filter(s => s.trim()).length || 1;
+
+            const palavrasUnicas = new Set(palavras.map(p => p.toLowerCase())).size;
+
+            let somaComp = 0;
+            palavras.forEach(p => somaComp += p.length);
+            const compMedio = totalPalavras > 0 ? (somaComp / totalPalavras) : 0;
+
+            const letrasMaiusculas = (texto.match(/[A-ZÀ-Ü]/g) || []).length;
+            const letrasMinusculas = (texto.match(/[a-zà-ü]/g) || []).length;
+            const numeros = (texto.match(/\d/g) || []).length;
+            const espacos = (texto.match(/\s/g) || []).length;
+
+            const tempoLeitura = Math.ceil(totalPalavras / 200);
+            const tempoFala = Math.ceil(totalPalavras / 140);
+
+            statsGrid.innerHTML = `
+                <div class="analise-card highlight"><div class="numero">${totalPalavras.toLocaleString('pt-BR')}</div><div class="rotulo">Palavras</div></div>
+                <div class="analise-card"><div class="numero">${chars.toLocaleString('pt-BR')}</div><div class="rotulo">Caracteres (total)</div></div>
+                <div class="analise-card"><div class="numero">${charsNoSpace.toLocaleString('pt-BR')}</div><div class="rotulo">Caracteres (s/ espaço)</div></div>
+                <div class="analise-card highlight"><div class="numero">${palavrasUnicas.toLocaleString('pt-BR')}</div><div class="rotulo">Palavras Únicas</div></div>
+                <div class="analise-card"><div class="numero">${paragrafos.toLocaleString('pt-BR')}</div><div class="rotulo">Parágrafos</div></div>
+                <div class="analise-card"><div class="numero">${linhas.toLocaleString('pt-BR')}</div><div class="rotulo">Linhas</div></div>
+                <div class="analise-card"><div class="numero">${frases.toLocaleString('pt-BR')}</div><div class="rotulo">Frases</div></div>
+                <div class="analise-card"><div class="numero">${compMedio.toFixed(1)}</div><div class="rotulo">Média letras/palavra</div></div>
+                <div class="analise-card"><div class="numero">${letrasMaiusculas.toLocaleString('pt-BR')}</div><div class="rotulo">Letras Maiúsculas</div></div>
+                <div class="analise-card"><div class="numero">${letrasMinusculas.toLocaleString('pt-BR')}</div><div class="rotulo">Letras Minúsculas</div></div>
+                <div class="analise-card"><div class="numero">${numeros.toLocaleString('pt-BR')}</div><div class="rotulo">Números</div></div>
+                <div class="analise-card"><div class="numero">${espacos.toLocaleString('pt-BR')}</div><div class="rotulo">Espaços</div></div>
+                <div class="analise-card warning"><div class="numero">${tempoLeitura} min</div><div class="rotulo">Tempo de Leitura</div></div>
+                <div class="analise-card danger"><div class="numero">${tempoFala} min</div><div class="rotulo">Tempo de Fala</div></div>
+            `;
+
+            // Frequência de palavras
+            const stopwords = new Set(['de','a','o','que','do','da','em','um','para','é','com','não','uma','os','no','se','na','por','mais','as','mas','ao','seu','ele','das','à','se','sua','ou','ser','quando','muito','há','também','pelo','pela','até','isso','ela','entre','era','depois','sem','mesmo','aos','seus','ela','pelos','pelas','elas','pelas','está','estar','para','pelos']);
+            const freq = {};
+            palavras.forEach(p => {
+                const lower = p.toLowerCase();
+                if (lower.length >= 3 && !stopwords.has(lower)) {
+                    freq[lower] = (freq[lower] || 0) + 1;
+                }
+            });
+            const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 50);
+            if (sorted.length > 0) {
+                freqSection.style.display = 'block';
+                const maxFreq = sorted[0][1];
+                document.getElementById('freqContainer').innerHTML = `
+                    <table class="freq-table">
+                        <thead><tr><th>#</th><th>Palavra</th><th>Frequência</th><th>Barras</th></tr></thead>
+                        <tbody>${sorted.map(([word, count], i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td><strong>${word}</strong></td>
+                                <td>${count}x</td>
+                                <td><div style="height:16px;background:var(--bg-primary);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${(count/maxFreq)*100}%;background:var(--accent-blue);border-radius:4px;"></div></div></td>
+                            </tr>
+                        `).join('')}</tbody>
+                    </table>`;
+            } else {
+                freqSection.style.display = 'none';
+            }
+        }
+
+        function carregarExemplo() {
+            document.getElementById('textoInput').value = `O Analisador de Texto é uma ferramenta versátil que permite examinar estatísticas detalhadas de qualquer texto digitado ou colado. Com ele, você pode contar palavras, caracteres, parágrafos e frases, além de descobrir a frequência das palavras mais usadas.
+
+Esta ferramenta é útil para escritores, estudantes, jornalistas e profissionais que precisam analisar a estrutura de seus textos. Você pode verificar o tempo médio de leitura, a quantidade de palavras únicas e muito mais.
+
+O analisador também identifica palavras-chave e mostra um ranking das palavras mais frequentes, ignorando termos comuns como artigos e preposições. Isso ajuda a entender melhor o conteúdo e a identificar possíveis repetições ou oportunidades de melhoria.`;
+            analisarTexto();
+            showToast('Texto de exemplo carregado!', 'success');
+        }
+
+        function limparTexto() {
+            document.getElementById('textoInput').value = '';
+            analisarTexto();
+            showToast('Texto limpo.', 'info');
+        }
+
+        function copiarTexto() {
+            const textarea = document.getElementById('textoInput');
+            textarea.select();
+            document.execCommand('copy');
+            showToast('Texto copiado!', 'success');
+        }
+    </script>
+</body>
+</html>

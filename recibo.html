@@ -17,6 +17,10 @@
             <a href="nota.html" class="nav-link">💰 Nota</a>
             <a href="checklist.html" class="nav-link">✅ Checklist</a>
             <a href="prova.html" class="nav-link">📝 Prova</a>
+            <a href="calculadora.html" class="nav-link">🔢 Calc.</a>
+            <a href="contrato.html" class="nav-link">📋 Contrato</a>
+            <a href="conversor.html" class="nav-link">🔄 Conv.</a>
+            <a href="analisador.html" class="nav-link">📊 Análise</a>
             <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
         </nav>
 
@@ -73,7 +77,7 @@
                         </div>
                         <div class="form-group">
                             <label>Complemento</label>
-                            <input type="text" id="recebedor-comp" placeholder="Apt, sala, etc" oninput="atualizarPrevia()">
+                            <input type="text" id="recebedor-comp" placeholder="Apt, sala, bloco" oninput="atualizarPrevia()">
                         </div>
                     </div>
                     <div class="row">
@@ -163,13 +167,14 @@
                     <legend class="section-title">📅 Data/Período</legend>
                     <div class="form-group">
                         <label>Tipo de Período *</label>
-                        <select id="periodo-tipo" onchange="atualizarPrevia()">
+                        <select id="periodo-tipo" onchange="togglePeriodoRecibo(); atualizarPrevia()">
+                            <option value="data">Selecionar Data</option>
                             <option value="dia">Por Dia(s)</option>
                             <option value="mes">Por Mês(es)</option>
                             <option value="ano">Por Ano(s)</option>
                         </select>
                     </div>
-                    <div class="row">
+                    <div class="row" id="periodo-range">
                         <div class="form-group">
                             <label>Data de Início *</label>
                             <input type="date" id="periodo-inicio" oninput="atualizarPrevia()">
@@ -179,6 +184,15 @@
                             <input type="date" id="periodo-fim" oninput="atualizarPrevia()">
                         </div>
                     </div>
+                    <div class="form-group" id="periodo-single" style="display:none;">
+                        <label>Data *</label>
+                        <input type="date" id="periodo-data" oninput="atualizarPrevia()">
+                    </div>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📝 Observações</legend>
+                    <textarea id="observacoes" rows="3" placeholder="Observações adicionais (opcional)..." oninput="atualizarPrevia()"></textarea>
                 </fieldset>
 
                 <div class="total-box" style="background-color: rgba(46, 204, 113, 0.1); border: 1px solid var(--accent-green);">

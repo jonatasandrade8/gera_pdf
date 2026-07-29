@@ -220,6 +220,29 @@ function gerarId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
+function showConfirmModal(message) {
+    return new Promise(resolve => {
+        const id = 'confirm-modal-' + Date.now();
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay active';
+        overlay.id = id;
+        overlay.style.zIndex = '2000';
+        overlay.innerHTML = `
+            <div class="modal" style="text-align:center;">
+                <p style="margin-bottom:20px;font-size:1rem;">${message}</p>
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button class="btn-primary" id="${id}-yes">Sim</button>
+                    <button class="btn-secondary" id="${id}-no">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById(id + '-yes').onclick = () => { overlay.remove(); resolve(true); };
+        document.getElementById(id + '-no').onclick = () => { overlay.remove(); resolve(false); };
+        overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+    });
+}
+
 function hojeISO() {
     return new Date().toISOString().split('T')[0];
 }

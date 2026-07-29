@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Contrato</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+    <style>
+        .contract-preview { background: white; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 40px; min-height: 500px; box-shadow: var(--shadow-sm); font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.6; color: #222; position: sticky; top: 80px; }
+        .contract-preview h1 { text-align: center; font-size: 14pt; margin-bottom: 20px; }
+        .contract-preview h2 { text-align: center; font-size: 12pt; margin: 15px 0; }
+        .contract-preview p { text-align: justify; margin-bottom: 10px; }
+        .contract-preview .clausula { margin-bottom: 8px; text-align: justify; }
+        .contract-preview .campo { display: inline-block; min-width: 120px; border-bottom: 1px solid #333; padding: 0 5px; font-weight: 600; }
+        .contract-preview .assinatura { margin-top: 50px; display: flex; justify-content: space-between; }
+        .contract-preview .assinatura div { text-align: center; width: 45%; }
+        .contract-preview .linha { border-top: 1px solid #333; width: 100%; display: block; margin-bottom: 5px; padding-top: 5px; }
+        .template-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .template-selector button { flex: 1; min-width: 120px; padding: 10px; border: 1px solid var(--border-color); background: var(--bg-secondary); border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); text-align: center; font-weight: 500; }
+        .template-selector button:hover { border-color: var(--accent-blue); }
+        .template-selector button.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="index.html" class="nav-link">🏠 Painel</a>
+            <a href="recibo.html" class="nav-link">📄 Recibo</a>
+            <a href="nota.html" class="nav-link">💰 Nota</a>
+            <a href="checklist.html" class="nav-link">✅ Checklist</a>
+            <a href="prova.html" class="nav-link">📝 Prova</a>
+            <a href="calculadora.html" class="nav-link">🔢 Calc.</a>
+            <a href="contrato.html" class="nav-link active">📋 Contrato</a>
+            <a href="conversor.html" class="nav-link">🔄 Conv.</a>
+            <a href="analisador.html" class="nav-link">📊 Análise</a>
+            <button class="theme-toggle" onclick="toggleDarkMode()" id="themeBtn">🌙</button>
+        </nav>
+
+        <div class="header">
+            <h1>📋 Gerador de Contrato</h1>
+            <p>Crie contratos personalizados com templates prontos e exporte em PDF</p>
+        </div>
+
+        <div class="content">
+            <div class="form-section">
+                <h2>Dados do Contrato</h2>
+
+                <div class="template-selector">
+                    <button class="active" onclick="selecionarTemplate('prestacao', this)">Prestação de Serviços</button>
+                    <button onclick="selecionarTemplate('locacao', this)">Locação</button>
+                    <button onclick="selecionarTemplate('confidencialidade', this)">Confidencialidade (NDA)</button>
+                </div>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">👤 Partes Envolvidas</legend>
+                    <div class="form-group">
+                        <label>Contratante (Parte A)</label>
+                        <input type="text" id="ct-parteA" placeholder="Nome completo / Razão Social" oninput="atualizarPreview()">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>CPF/CNPJ</label>
+                            <input type="text" id="ct-docA" placeholder="000.000.000-00" oninput="atualizarPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Endereço</label>
+                            <input type="text" id="ct-endA" placeholder="Rua, nº, bairro, cidade/UF" oninput="atualizarPreview()">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Contratado (Parte B)</label>
+                        <input type="text" id="ct-parteB" placeholder="Nome completo / Razão Social" oninput="atualizarPreview()">
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>CPF/CNPJ</label>
+                            <input type="text" id="ct-docB" placeholder="000.000.000-00" oninput="atualizarPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Endereço</label>
+                            <input type="text" id="ct-endB" placeholder="Rua, nº, bairro, cidade/UF" oninput="atualizarPreview()">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="section-group">
+                    <legend class="section-title">📝 Detalhes</legend>
+                    <div class="form-group">
+                        <label>Objeto do Contrato</label>
+                        <textarea id="ct-objeto" rows="3" placeholder="Descreva o objeto do contrato..." oninput="atualizarPreview()"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Valor (R$)</label>
+                            <input type="number" id="ct-valor" value="0" min="0" step="100" oninput="atualizarPreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Prazo / Vigência</label>
+                            <input type="text" id="ct-prazo" placeholder="Ex: 12 meses, Indeterminado" oninput="atualizarPreview()">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Cláusulas Adicionais</label>
+                        <textarea id="ct-clausulas" rows="4" placeholder="Cláusulas extras (opcional)..." oninput="atualizarPreview()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Local e Data</label>
+                        <input type="text" id="ct-local" placeholder="Ex: São Paulo, 28 de julho de 2026" oninput="atualizarPreview()">
+                    </div>
+                </fieldset>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="gerarPDFContrato()">📥 Gerar PDF</button>
+                    <button class="btn btn-outline" onclick="limparContrato()">🗑️ Limpar</button>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Prévia do Contrato</h2>
+                <div class="contract-preview" id="ctPreview">
+                    <p style="text-align: center; color: #999; padding-top: 100px;">Preencha os campos ao lado para ver a prévia.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        let templateAtual = 'prestacao';
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.getElementById('themeBtn').textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? '1' : '0');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === '1') { document.body.classList.add('dark-mode'); document.getElementById('themeBtn').textContent = '☀️'; }
+            atualizarPreview();
+        });
+
+        function selecionarTemplate(tipo, btn) {
+            document.querySelectorAll('.template-selector button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            templateAtual = tipo;
+            atualizarPreview();
+        }
+
+        function fmtMoeda(v) { return 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+        function getDados() {
+            return {
+                tipo: templateAtual,
+                parteA: document.getElementById('ct-parteA').value || '[CONTRATANTE]',
+                docA: document.getElementById('ct-docA').value || '[CPF/CNPJ]',
+                endA: document.getElementById('ct-endA').value || '[ENDEREÇO]',
+                parteB: document.getElementById('ct-parteB').value || '[CONTRATADO]',
+                docB: document.getElementById('ct-docB').value || '[CPF/CNPJ]',
+                endB: document.getElementById('ct-endB').value || '[ENDEREÇO]',
+                objeto: document.getElementById('ct-objeto').value || '[OBJETO DO CONTRATO]',
+                valor: document.getElementById('ct-valor').value || '0',
+                prazo: document.getElementById('ct-prazo').value || '[PRAZO]',
+                clausulas: document.getElementById('ct-clausulas').value,
+                local: document.getElementById('ct-local').value || '[LOCAL E DATA]',
+            };
+        }
+
+        function gerarTextoContrato() {
+            const d = getDados();
+            const templates = {
+                prestacao: `
+                    <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h1>
+                    <p><strong>PARTES:</strong></p>
+                    <p><strong>CONTRATANTE:</strong> ${d.parteA}, inscrito(a) no CPF/CNPJ sob nº ${d.docA}, com endereço na ${d.endA}, doravante denominado simplesmente <strong>CONTRATANTE</strong>.</p>
+                    <p><strong>CONTRATADO:</strong> ${d.parteB}, inscrito(a) no CPF/CNPJ sob nº ${d.docB}, com endereço na ${d.endB}, doravante denominado simplesmente <strong>CONTRATADO</strong>.</p>
+                    <p>As partes acima identificadas têm, entre si, justo e acordado o presente <strong>Contrato de Prestação de Serviços</strong>, que se regerá pelas cláusulas seguintes:</p>
+                    <p class="clausula"><strong>CLÁUSULA PRIMEIRA – DO OBJETO</strong><br>O presente contrato tem como objeto a prestação de serviços de <strong>${d.objeto}</strong>, pelo CONTRATADO ao CONTRATANTE.</p>
+                    <p class="clausula"><strong>CLÁUSULA SEGUNDA – DO VALOR E FORMA DE PAGAMENTO</strong><br>O CONTRATANTE pagará ao CONTRATADO o valor de <strong>${fmtMoeda(d.valor)}</strong> pelos serviços prestados, conforme condições acordadas entre as partes.</p>
+                    <p class="clausula"><strong>CLÁUSULA TERCEIRA – DO PRAZO</strong><br>O presente contrato terá vigência de <strong>${d.prazo}</strong>, contados a partir da data de assinatura, podendo ser renovado por acordo entre as partes.</p>
+                    <p class="clausula"><strong>CLÁUSULA QUARTA – DAS OBRIGAÇÕES DAS PARTES</strong><br>O CONTRATADO se compromete a executar os serviços com diligência e qualidade. O CONTRATANTE se compromete a fornecer as informações necessárias e efetuar os pagamentos no prazo estipulado.</p>`
+                ,
+                locacao: `
+                    <h1>CONTRATO DE LOCAÇÃO</h1>
+                    <p><strong>PARTES:</strong></p>
+                    <p><strong>LOCADOR:</strong> ${d.parteA}, inscrito(a) no CPF/CNPJ sob nº ${d.docA}, com endereço na ${d.endA}, doravante denominado simplesmente <strong>LOCADOR</strong>.</p>
+                    <p><strong>LOCATÁRIO:</strong> ${d.parteB}, inscrito(a) no CPF/CNPJ sob nº ${d.docB}, com endereço na ${d.endB}, doravante denominado simplesmente <strong>LOCATÁRIO</strong>.</p>
+                    <p>As partes acima identificadas têm, entre si, justo e acordado o presente <strong>Contrato de Locação</strong>, que se regerá pelas cláusulas seguintes:</p>
+                    <p class="clausula"><strong>CLÁUSULA PRIMEIRA – DO OBJETO</strong><br>O presente contrato tem como objeto a locação de <strong>${d.objeto}</strong>, de propriedade do LOCADOR, para uso pelo LOCATÁRIO.</p>
+                    <p class="clausula"><strong>CLÁUSULA SEGUNDA – DO VALOR E FORMA DE PAGAMENTO</strong><br>O LOCATÁRIO pagará ao LOCADOR o valor mensal de <strong>${fmtMoeda(d.valor)}</strong>, a ser pago até o dia útil de cada mês.</p>
+                    <p class="clausula"><strong>CLÁUSULA TERCEIRA – DO PRAZO</strong><br>O prazo de locação é de <strong>${d.prazo}</strong>, podendo ser rescindido mediante aviso prévio de 30 dias.</p>
+                    <p class="clausula"><strong>CLÁUSULA QUARTA – DAS OBRIGAÇÕES</strong><br>O LOCATÁRIO se obriga a zelar pelo bem locado. O LOCADOR se obriga a manter o bem em condições de uso.</p>`
+                ,
+                confidencialidade: `
+                    <h1>ACORDO DE CONFIDENCIALIDADE (NDA)</h1>
+                    <p><strong>PARTES:</strong></p>
+                    <p><strong>PARTE REVELADORA:</strong> ${d.parteA}, inscrito(a) no CPF/CNPJ sob nº ${d.docA}, com endereço na ${d.endA}.</p>
+                    <p><strong>PARTE RECEPTORA:</strong> ${d.parteB}, inscrito(a) no CPF/CNPJ sob nº ${d.docB}, com endereço na ${d.endB}.</p>
+                    <p>As partes acima identificadas celebram o presente <strong>Acordo de Confidencialidade</strong>, mediante as cláusulas abaixo:</p>
+                    <p class="clausula"><strong>CLÁUSULA PRIMEIRA – OBJETO</strong><br>As informações confidenciais compartilhadas referem-se a: <strong>${d.objeto}</strong>. Ambas as partes se comprometem a manter sigilo absoluto.</p>
+                    <p class="clausula"><strong>CLÁUSULA SEGUNDA – OBRIGAÇÕES</strong><br>A Parte Receptora concorda em não divulgar, copiar, reproduzir ou utilizar as informações confidenciais para qualquer fim que não seja o expressamente autorizado.</p>
+                    <p class="clausula"><strong>CLÁUSULA TERCEIRA – PRAZO</strong><br>A obrigação de confidencialidade vigorará pelo prazo de <strong>${d.prazo}</strong>, contados da data de assinatura deste acordo.</p>
+                    <p class="clausula"><strong>CLÁUSULA QUARTA – PENALIDADES</strong><br>O descumprimento de qualquer cláusula deste acordo sujeitará a Parte Receptora ao pagamento de multa no valor de <strong>${fmtMoeda(d.valor)}</strong>.</p>`
+            };
+
+            let texto = templates[d.tipo] || templates.prestacao;
+
+            if (d.clausulas.trim()) {
+                texto += `<p class="clausula"><strong>CLÁUSULA ADICIONAL</strong><br>${d.clausulas}</p>`;
+            }
+
+            texto += `
+                <p class="clausula"><strong>CLÁUSULA FINAL</strong><br>Fica eleito o foro da comarca de ${d.local.split(',')[0] || '[CIDADE]'} para dirimir quaisquer dúvidas oriundas do presente contrato.</p>
+                <p>E, por estarem assim justos e contratados, as partes assinam o presente instrumento em 2 (duas) vias de igual teor e forma.</p>
+                <p style="text-align:center;margin-top:30px;">${d.local}</p>
+                <div class="assinatura">
+                    <div><div class="linha">${d.parteA}</div><p style="font-size:10pt;margin-top:5px;">CONTRATANTE / PARTE A</p></div>
+                    <div><div class="linha">${d.parteB}</div><p style="font-size:10pt;margin-top:5px;">CONTRATADO / PARTE B</p></div>
+                </div>
+                <p style="text-align:center;font-size:9pt;color:#999;margin-top:40px;">Documento gerado eletronicamente.</p>`;
+
+            return texto;
+        }
+
+        function atualizarPreview() {
+            const preview = document.getElementById('ctPreview');
+            const d = getDados();
+            if (d.parteA === '[CONTRATANTE]' && d.parteB === '[CONTRATADO]' && !document.getElementById('ct-objeto').value) {
+                preview.innerHTML = '<p style="text-align: center; color: #999; padding-top: 100px;">Preencha os campos ao lado para ver a prévia.</p>';
+                return;
+            }
+            preview.innerHTML = gerarTextoContrato();
+        }
+
+        async function limparContrato() {
+            if (!await showConfirmModal('Limpar todos os campos?')) return;
+            document.querySelectorAll('#ct-parteA, #ct-docA, #ct-endA, #ct-parteB, #ct-docB, #ct-endB, #ct-objeto, #ct-prazo, #ct-clausulas, #ct-local').forEach(i => i.value = '');
+            document.getElementById('ct-valor').value = '0';
+            atualizarPreview();
+            showToast('Formulário limpo.', 'info');
+        }
+
+        function gerarPDFContrato() {
+            const d = getDados();
+            if (d.parteA === '[CONTRATANTE]' || d.parteB === '[CONTRATADO]') {
+                showToast('Preencha os nomes das partes.', 'warning');
+                return;
+            }
+
+            const text = gerarTextoContrato();
+            const plain = text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&agrave;/g, 'à').replace(/&ccedil;/g, 'ç').replace(/&atilde;/g, 'ã').replace(/&eacute;/g, 'é').replace(/&iacute;/g, 'í').replace(/&oacute;/g, 'ó').replace(/&uacute;/g, 'ú').replace(/&ecirc;/g, 'ê').replace(/&otilde;/g, 'õ').replace(/&acirc;/g, 'â');
+
+            const lineHeight = 14;
+            const lines = plain.split('\n').filter(l => l.trim());
+
+            const content = lines.map(line => {
+                if (line.startsWith('CONTRATO') || line.startsWith('ACORDO')) {
+                    return { text: line, bold: true, fontSize: 14, alignment: 'center', margin: [0, 10, 0, 5] };
+                }
+                if (line.startsWith('PARTES:') || line.startsWith('CLÁUSULA')) {
+                    return { text: line, bold: true, fontSize: 11, margin: [0, 8, 0, 3] };
+                }
+                if (line.startsWith('E, por estarem')) {
+                    return { text: line, alignment: 'center', margin: [0, 15, 0, 5] };
+                }
+                return { text: line, fontSize: 10, alignment: 'justify', margin: [0, 2, 0, 2] };
+            });
+
+            const docDefinition = {
+                pageSize: 'A4', pageMargins: [50, 50, 50, 50],
+                content: content,
+                defaultStyle: { font: 'Roboto', lineHeight: 1.5 }
+            };
+
+            pdfMake.createPdf(docDefinition).download(`Contrato_${d.tipo}_${d.parteA.split(' ')[0]}.pdf`);
+            showToast('PDF do contrato gerado!', 'success');
+        }
+    </script>
+</body>
+</html>

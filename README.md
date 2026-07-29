@@ -16,6 +16,18 @@ Duas ferramentas em uma. Modo **Checklist**: crie listas com nome e itens simple
 ### Criador de Provas (NOVO)
 Crie provas personalizaveis para professores e educadores. Cabecalho customizavel com instituicao, professor, disciplina, data e valor. Tipos de questoes: discursiva, verdadeiro/falso, multipla escolha, lacuna e correspondencia. Organize por secoes com instrucoes proprias. Gere PDF da prova e do gabarito separado. Templates prontos para Matematica, Portugues, Ciencias, Historia e Geografia.
 
+### Calculadora Financeira (NOVO)
+Simulacoes financeiras completas: juros compostos com tabela de evolucao mensal, juros simples, financiamento pelo sistema SAC com tabela de amortizacao, e simulador de aporte mensal com juros compostos.
+
+### Gerador de Contrato (NOVO)
+Crie contratos personalizados com 3 templates prontos: Prestacao de Servicos, Locacao e Acordo de Confidencialidade (NDA). Preencha as partes, objeto, valor, prazo e clausulas adicionais. Visualizacao em tempo real e exportacao em PDF.
+
+### Conversor de Unidades (NOVO)
+Converta entre diferentes unidades de medida: comprimento, massa, temperatura, volume, area, velocidade, tempo e armazenamento digital. Interface simples com inversao rapida entre unidades.
+
+### Analisador de Texto (NOVO)
+Analise estatisticas completas de qualquer texto: contagem de palavras, caracteres, paragrafos, frases, palavras unicas, tempo de leitura/fala, distribuicao de maiusculas/minusculas/numeros e frequencia de palavras com grafico de barras.
+
 ## Como Usar
 
 1. Abra o arquivo `index.html` em qualquer navegador moderno
@@ -36,7 +48,6 @@ Crie provas personalizaveis para professores e educadores. Cabecalho customizave
 ## Estrutura do Projeto
 
 ```
-gera_pdf-main/
 |-- index.html          # Painel principal / hub
 |-- style.css           # Estilos compartilhados (com Dark Mode)
 |-- utils.js            # Funcoes compartilhadas (mascaras, APIs, toasts, LocalStorage)
@@ -45,9 +56,13 @@ gera_pdf-main/
 |-- nota.html           # Gerador de Nota de Valores
 |-- nota_script.js      # Logica do gerador de nota
 |-- checklist.html      # Checklists & Tarefas
-|-- checklist.js        # Logica do checklist (calendario, semanal, drag & drop)
+|-- checklist.js        # Logica do checklist (planner, drag & drop)
 |-- prova.html          # Criador de Provas
 |-- prova.js            # Logica do criador de provas (questoes, gabarito, templates)
+|-- calculadora.html    # Calculadora Financeira
+|-- contrato.html       # Gerador de Contrato
+|-- conversor.html      # Conversor de Unidades
+|-- analisador.html     # Analisador de Texto
 ```
 
 ## Melhorias Implementadas
@@ -63,6 +78,12 @@ gera_pdf-main/
 - **Busca e Filtros** - Dashboard com busca
 - **Templates** - Provas com templates prontos por disciplina
 - **2 Modos no Checklist** - Checklist PDF simples ou Planner semanal com horarios
+- **Calculadora Financeira** - Juros simples, compostos, financiamento SAC e aporte mensal
+- **Gerador de Contrato** - Templates de prestacao, locacao e NDA com exportacao PDF
+- **Conversor de Unidades** - 8 categorias de conversao com inversao rapida
+- **Analisador de Texto** - Estatisticas completas e frequencia de palavras
+- **Breakpoint Tablet** - Layout adaptativo em 900px para tablets
+- **Inputs Melhorados** - Campos maiores no planner e preview enriquecido do recibo
 
 ## Contribuicoes
 

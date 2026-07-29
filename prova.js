@@ -51,8 +51,8 @@ function salvarSecao() {
     showToast('Seção salva!', 'success');
 }
 
-function deletarSecao(id) {
-    if (!confirm('Excluir esta seção e todas as questões?')) return;
+async function deletarSecao(id) {
+    if (!await showConfirmModal('Excluir esta seção e todas as questões?')) return;
     prova.secoes = prova.secoes.filter(s => s.id !== id);
     renderEditor(); renderPreview(); updateStats();
     showToast('Seção excluída.', 'info');
@@ -362,8 +362,8 @@ function renderPreview() {
 
 // === TEMPLATES ===
 
-function aplicarTemplate(tipo) {
-    if (prova.secoes.length > 0 && !confirm('Isso substituirá o conteúdo atual. Continuar?')) return;
+async function aplicarTemplate(tipo) {
+    if (prova.secoes.length > 0 && !await showConfirmModal('Isso substituirá o conteúdo atual. Continuar?')) return;
 
     const templates = {
         matematica: {
@@ -482,8 +482,8 @@ function carregarProva(id) {
     showToast('Prova carregada!', 'success');
 }
 
-function deletarProvaSalva(id) {
-    if (!confirm('Excluir esta prova salva?')) return;
+async function deletarProvaSalva(id) {
+    if (!await showConfirmModal('Excluir esta prova salva?')) return;
     storageRemove(PROVAS_KEY, id);
     renderProvasSalvas();
     showToast('Prova excluída.', 'info');
@@ -507,8 +507,8 @@ function renderProvasSalvas() {
     `).join('');
 }
 
-function limparProva() {
-    if (!confirm('Limpar toda a prova?')) return;
+async function limparProva() {
+    if (!await showConfirmModal('Limpar toda a prova?')) return;
     prova.secoes = [];
     document.getElementById('provaInstituicao').value = '';
     document.getElementById('provaProfessor').value = '';

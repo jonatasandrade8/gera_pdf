@@ -21,11 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
     itens = storageGet(STORAGE_KEY);
     renderSidebar();
     if (itens.length > 0) selecionarItem(itens[0].id);
+    else mostrarVazio();
 });
 
 function salvar() { storageSet(STORAGE_KEY, itens); }
 function getAtivo() { return itens.find(i => i.id === ativoId); }
 function fecharModal(id) { document.getElementById(id).classList.remove('active'); }
+function mostrarVazio() {
+    const icon = modo === 'checklist' ? '📋' : '📅';
+    const msg = modo === 'checklist' ? 'Crie ou selecione um checklist' : 'Crie ou selecione um planner';
+    document.getElementById('conteudoPrincipal').innerHTML = `<div style="text-align: center; padding: 60px 20px; color: var(--text-muted);"><p style="font-size: 3rem; margin-bottom: 15px;">${icon}</p><p style="font-size: 1.2rem;">${msg}</p></div>`;
+}
 
 // === MODO ===
 
@@ -35,12 +41,12 @@ function setMode(m) {
     document.getElementById('btnModePlanner').classList.toggle('active', m === 'planner');
     document.getElementById('sidebarTitle').textContent = m === 'checklist' ? '📋 Meus Checklists' : '📅 Meus Planners';
     document.getElementById('btnNovo').textContent = m === 'checklist' ? '+ Novo Checklist' : '+ Novo Planner';
-    document.getElementById('emptyIcon').textContent = m === 'checklist' ? '📋' : '📅';
-    document.getElementById('emptyText').textContent = m === 'checklist' ? 'Crie um checklist para começar' : 'Crie um planner para começar';
     if (ativoId) {
         const ativo = getAtivo();
-        if (ativo && ativo.tipo !== m) { ativoId = null; document.getElementById('conteudoPrincipal').innerHTML = `<div style="text-align: center; padding: 60px 20px; color: var(--text-muted);"><p style="font-size: 3rem; margin-bottom: 15px;">${m === 'checklist' ? '📋' : '📅'}</p><p>${m === 'checklist' ? 'Selecione ou crie um checklist' : 'Selecione ou crie um planner'}</p></div>`; }
+        if (ativo && ativo.tipo !== m) { ativoId = null; mostrarVazio(); }
         else if (ativo) renderConteudo();
+    } else {
+        mostrarVazio();
     }
     renderSidebar();
 }
@@ -73,15 +79,15 @@ function salvarNovo() {
     showToast(`${modo === 'checklist' ? 'Checklist' : 'Planner'} "${nome}" criado!`, 'success');
 }
 
-function deletarItem(id, e) {
+async function deletarItem(id, e) {
     e.stopPropagation();
     const item = itens.find(i => i.id === id);
-    if (!confirm(`Excluir "${item.nome}"?`)) return;
+    if (!await showConfirmModal(`Excluir "${item.nome}"?`)) return;
     itens = itens.filter(i => i.id !== id);
     salvar();
     if (ativoId === id) {
         ativoId = null;
-        document.getElementById('conteudoPrincipal').innerHTML = `<div style="text-align: center; padding: 60px 20px; color: var(--text-muted);"><p style="font-size: 3rem; margin-bottom: 15px;">${modo === 'checklist' ? '📋' : '📅'}</p><p>${modo === 'checklist' ? 'Selecione ou crie um checklist' : 'Selecione ou crie um planner'}</p></div>`;
+        mostrarVazio();
     }
     renderSidebar();
     showToast('Excluído.', 'info');
@@ -279,10 +285,12 @@ function renderPlannerView(pl) {
         const diaItens = pl.dias[dia.key] || [];
         html += `<div class="planner-day">
             <div class="planner-day-header">${dia.nome}</div>
-            <div class="add-item-inline" style="margin-bottom: 6px;">
-                <input type="text" id="plannerInput_${dia.key}" placeholder="Tarefa..." style="font-size: 0.8rem; padding: 5px 8px;" onkeydown="if(event.key==='Enter'){ adicionarPlannerEnter('${dia.key}'); }">
-                <input type="time" id="plannerTime_${dia.key}" style="font-size: 0.8rem; padding: 5px 4px; width: 80px;">
-                <button onclick="adicionarPlannerEnter('${dia.key}')" style="padding: 5px 10px; font-size: 0.85rem;">+</button>
+            <div style="margin-bottom: 6px;">
+                <input type="text" id="plannerInput_${dia.key}" placeholder="Ex: Reunião com cliente..." title="Digite a tarefa e pressione Enter" style="width: 100%; box-sizing: border-box; font-size: 0.9rem; padding: 8px 10px; margin-bottom: 4px;" onkeydown="if(event.key==='Enter'){ adicionarPlannerEnter('${dia.key}'); }">
+                <div style="display: flex; gap: 4px;">
+                    <input type="time" id="plannerTime_${dia.key}" style="flex: 1; min-width: 0; font-size: 0.8rem; padding: 6px 4px;">
+                    <button onclick="adicionarPlannerEnter('${dia.key}')" style="padding: 6px 12px; font-size: 0.85rem; font-weight: 700; border: none; background: var(--accent-green); color: white; border-radius: var(--radius-sm); cursor: pointer;">+</button>
+                </div>
             </div>
             <div id="plannerItems_${dia.key}">`;
 
@@ -326,25 +334,67 @@ function gerarPDFChecklist() {
     const cl = getAtivo();
     if (!cl || cl.itens.length === 0) { showToast('Adicione pelo menos um item.', 'warning'); return; }
 
-    const tableBody = cl.itens.map((item, i) => [
-        { text: (i + 1).toString(), alignment: 'center', fontSize: 10, width: 30 },
-        { text: item.nome, fontSize: 11 },
-        { text: '☐', alignment: 'center', fontSize: 14, width: 30 }
+    const checkedCount = cl.itens.filter(i => i.checked).length;
+    const totalCount = cl.itens.length;
+
+    const headerRow = [
+        { text: '#', style: 'tableHeader', alignment: 'center', width: 25 },
+        { text: 'ITEM', style: 'tableHeader' },
+        { text: '[  ]', style: 'tableHeader', alignment: 'center', width: 30 }
+    ];
+
+    const dataRows = cl.itens.map((item, i) => [
+        { text: (i + 1).toString(), alignment: 'center', fontSize: 10, width: 25, color: '#888' },
+        { text: item.nome, fontSize: 11, color: '#333' },
+        { text: '[  ]', alignment: 'center', fontSize: 14, width: 30, color: '#555' }
     ]);
 
+    const tableBody = [headerRow, ...dataRows];
+
     const docDefinition = {
-        pageSize: 'A4', pageMargins: [40, 60, 40, 40],
-        header: { text: cl.nome.toUpperCase(), style: 'header', alignment: 'center', margin: [0, 20, 0, 10] },
+        pageSize: 'A4', pageMargins: [35, 50, 35, 40],
+        header: function () {
+            return { text: cl.nome.toUpperCase(), style: 'header', alignment: 'center', margin: [0, 15, 0, 0] };
+        },
         content: [
-            { text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')} | ${cl.itens.length} itens`, alignment: 'center', fontSize: 9, color: '#888', margin: [0, 0, 0, 20] },
-            { table: { widths: [30, '*', 30], body: tableBody, headerRows: 0 }, layout: { hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#ddd', paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 6, paddingBottom: () => 6 } },
+            {
+                columns: [
+                    { text: `Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, fontSize: 8, color: '#aaa' },
+                    { text: `${totalCount} itens · ${checkedCount} concluídos`, fontSize: 8, color: '#aaa', alignment: 'right' }
+                ],
+                margin: [0, 0, 0, 12]
+            },
+            {
+                table: { widths: [25, '*', 30], body: tableBody, headerRows: 1 },
+                layout: {
+                    hLineWidth: function (i, node) {
+                        if (i === 0 || i === 1) return 1.5;
+                        return i === node.table.body.length ? 1 : 0.4;
+                    },
+                    vLineWidth: function () { return 0.4; },
+                    hLineColor: function () { return '#ddd'; },
+                    vLineColor: function () { return '#e8e8e8'; },
+                    paddingLeft: function (i) { return i === 1 ? 10 : 6; },
+                    paddingRight: function () { return 6; },
+                    paddingTop: function () { return 7; },
+                    paddingBottom: function () { return 7; },
+                    fillColor: function (rowIndex) {
+                        if (rowIndex === 0) return '#2c3e50';
+                        return rowIndex % 2 === 0 ? '#f5f6f8' : null;
+                    }
+                }
+            },
             { text: '\n' },
-            { text: 'Observações:', bold: true, fontSize: 11, margin: [0, 20, 0, 5] },
-            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#ccc' }], margin: [0, 0, 0, 15] },
-            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#ccc' }], margin: [0, 0, 0, 15] },
-            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#ccc' }] }
+            { text: 'Observações:', bold: true, fontSize: 11, margin: [0, 20, 0, 5], color: '#2c3e50' },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 540, y2: 0, lineWidth: 0.5, lineColor: '#d0d0d0' }], margin: [0, 0, 0, 14] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 540, y2: 0, lineWidth: 0.5, lineColor: '#d0d0d0' }], margin: [0, 0, 0, 14] },
+            { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 540, y2: 0, lineWidth: 0.5, lineColor: '#d0d0d0' }] },
+            { text: 'Gerado por Checklists & Planner', fontSize: 7, color: '#ccc', alignment: 'center', margin: [0, 30, 0, 0] }
         ],
-        styles: { header: { fontSize: 20, bold: true, color: '#2c3e50' } },
+        styles: {
+            header: { fontSize: 22, bold: true, color: '#2c3e50' },
+            tableHeader: { color: '#fff', bold: true, fontSize: 9 }
+        },
         defaultStyle: { font: 'Roboto' }
     };
 
